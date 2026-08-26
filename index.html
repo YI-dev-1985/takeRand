@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v7.0</title>
+    <title>땅따먹기 v7.1</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -17,13 +17,13 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
         html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
-        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:1000px; padding:max(4px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); gap:4px; }
-        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:10px; padding:6px 10px; }
-        .hud-side { display:flex; align-items:center; gap:6px; }
-        .hud-name { font-weight:700; font-size:13px; }
-        .hud-score { font-size:17px; font-weight:900; min-width:40px; text-align:center; }
-        #version-badge { font-size:10px; color:#aaa; background:#222; padding:2px 6px; border-radius:6px; }
-        #turn-info { font-size:12px; font-weight:600; color:#ddd; }
+        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:900px; padding:max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap:6px; }
+        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:10px; padding:8px 12px; }
+        .hud-side { display:flex; align-items:center; gap:8px; }
+        .hud-name { font-weight:700; font-size:14px; }
+        .hud-score { font-size:18px; font-weight:900; min-width:40px; text-align:center; }
+        #version-badge { font-size:10px; color:#aaa; background:#222; padding:2px 8px; border-radius:8px; }
+        #turn-info { font-size:13px; font-weight:600; color:#ddd; }
         #board-wrapper { flex:1; width:100%; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; }
         canvas { border-radius:10px; background:#1a1a2e; box-shadow:0 4px 16px rgba(0,0,0,0.8); width:100%; height:100%; object-fit:contain; touch-action:none; }
         #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); border-radius:10px; z-index:10; opacity:0; pointer-events:none; transition:0.3s; }
@@ -32,15 +32,16 @@
         #overlay-desc { color:#ccc; margin-bottom:10px; text-align:center; padding:0 12px; font-size:14px; }
         #btn-restart { padding:10px 28px; font-size:16px; font-weight:700; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
-        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:4px 8px; background:var(--panel); border-radius:10px; }
+        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; }
         #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; }
-        #gauge-bar-bg { flex:1; height:12px; background:#333; border-radius:6px; overflow:hidden; }
-        #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:6px; }
-        #gauge-value { font-size:14px; font-weight:900; color:#fff; min-width:35px; text-align:center; }
-        #btn-fire { padding:8px 22px; font-size:17px; font-weight:900; border:none; border-radius:25px; background:var(--button); color:#000; cursor:pointer; }
+        #gauge-bar-bg { flex:1; height:14px; background:#333; border-radius:7px; overflow:hidden; }
+        #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:7px; }
+        #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
+        #btn-fire { padding:8px 24px; font-size:18px; font-weight:900; border:none; border-radius:25px; background:var(--button); color:#000; cursor:pointer; }
         #btn-fire:active { transform:scale(0.95); }
         #btn-fire:disabled { background:#555; color:#999; }
-        #instructions { color:#666; font-size:10px; text-align:center; }
+        #instructions { color:#777; font-size:10px; text-align:center; }
+        #success-toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(78,204,163,0.9); color:#fff; padding:16px 32px; border-radius:16px; font-size:24px; font-weight:900; z-index:20; pointer-events:none; opacity:0; transition:opacity 0.3s; }
     </style>
 </head>
 <body>
@@ -55,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v7.0</div>
+            <div id="version-badge">v7.1</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -67,6 +68,7 @@
     </div>
     <div id="board-wrapper">
         <canvas id="gameCanvas"></canvas>
+        <div id="success-toast">🎉 영역 획득!</div>
         <div id="overlay">
             <div id="overlay-title"></div>
             <div id="overlay-desc"></div>
@@ -97,15 +99,16 @@
     const gaugeBar = document.getElementById('gauge-bar');
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
+    const successToast = document.getElementById('success-toast');
 
     // 게임 설정
-    const BOARD_W = 1200;
-    const BOARD_H = 700;
-    const BASE_RADIUS = 60;
-    const BALL_RADIUS = 8;
+    const BOARD_W = 1000;
+    const BOARD_H = 600;
+    const BASE_RADIUS = 50;
+    const BALL_RADIUS = 7;
     const WALL_THICKNESS = 3;
     const FRICTION = 0.985;
-    const MAX_SPEED = 16;
+    const MAX_SPEED = 15;
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
     const BASE_LOSS_RATIO = 0.5;
@@ -115,8 +118,8 @@
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    const BASE1_X = BOARD_W/2, BASE1_Y = 100;
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 100;
+    const BASE1_X = BOARD_W/2, BASE1_Y = 90;
+    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 90;
     const TOTAL_AREA = BOARD_W * BOARD_H;
 
     let territoryMap = null;
@@ -310,37 +313,50 @@
             }
         }
 
-        // 기지
+        // 기지 (원형 유지 - 화면 비율 보정)
+        const scaleFactor = Math.min(cellW, cellH); // 정사각형 유지
+        const base1ScreenX = BASE1_X * cellW;
+        const base1ScreenY = BASE1_Y * cellH;
+        const base1ScreenR = BASE_RADIUS * scaleFactor;
+
+        const base2ScreenX = BASE2_X * cellW;
+        const base2ScreenY = BASE2_Y * cellH;
+        const base2ScreenR = BASE_RADIUS * scaleFactor;
+
+        // P1 기지
         ctx.fillStyle = 'rgba(78, 204, 163, 0.7)';
         ctx.beginPath();
-        ctx.arc(BASE1_X * cellW, BASE1_Y * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+        ctx.arc(base1ScreenX, base1ScreenY, base1ScreenR, 0, Math.PI*2);
         ctx.fill();
         ctx.strokeStyle = '#4ecca3';
         ctx.lineWidth = 3;
         ctx.stroke();
 
+        // P2 기지
         ctx.fillStyle = 'rgba(255, 107, 107, 0.7)';
         ctx.beginPath();
-        ctx.arc(BASE2_X * cellW, BASE2_Y * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+        ctx.arc(base2ScreenX, base2ScreenY, base2ScreenR, 0, Math.PI*2);
         ctx.fill();
         ctx.strokeStyle = '#ff6b6b';
         ctx.lineWidth = 3;
         ctx.stroke();
 
+        // 기지 텍스트
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 28px -apple-system, sans-serif';
+        ctx.font = 'bold 24px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('나', BASE1_X * cellW, BASE1_Y * cellH);
-        ctx.fillText('컴', BASE2_X * cellW, BASE2_Y * cellH);
+        ctx.fillText('나', base1ScreenX, base1ScreenY);
+        ctx.fillText('컴', base2ScreenX, base2ScreenY);
 
         // 돌
         const ballScreenX = ball.x * cellW;
         const ballScreenY = ball.y * cellH;
+        const ballScreenR = BALL_RADIUS * scaleFactor;
         ctx.shadowColor = 'rgba(255,255,255,0.9)';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(ballScreenX, ballScreenY, BALL_RADIUS * cellW, 0, Math.PI*2);
+        ctx.arc(ballScreenX, ballScreenY, ballScreenR, 0, Math.PI*2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.shadowBlur = 0;
@@ -360,7 +376,7 @@
                 ctx.setLineDash([6, 6]);
                 ctx.beginPath();
                 ctx.moveTo(ballScreenX, ballScreenY);
-                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*60*cellW, ballScreenY + Math.sin(aimAngle)*60*cellH);
+                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*50*scaleFactor, ballScreenY + Math.sin(aimAngle)*50*scaleFactor);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
@@ -372,7 +388,7 @@
             ctx.lineWidth = 3;
             ctx.setLineDash([8, 8]);
             ctx.beginPath();
-            ctx.arc(BOARD_W/2 * cellW, (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+            ctx.arc(BOARD_W/2 * cellW, (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH, BASE_RADIUS * scaleFactor, 0, Math.PI*2);
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -425,7 +441,6 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        // 두 번째 발사부터 이전 경로(벽) 교차 체크
         if (shotsFired > 1) {
             if (checkFailure(prevX, prevY, ball.x, ball.y)) {
                 ball.moving = false;
@@ -459,9 +474,7 @@
             const dx0 = px - x1, dy0 = py - y1;
             if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
             const idx = py * BOARD_W + px;
-            // 내 영역 진입 체크
             if (territoryMap[idx] === currentPlayer) return true;
-            // 이전 경로(벽) 교차 체크
             if (wallMap[idx] === 1 || tempWallMap[idx] === 1) return true;
         }
         return false;
@@ -509,6 +522,7 @@
 
         if (hasLeftBase && distToBase <= BASE_RADIUS) {
             acquireTerritory();
+            showSuccessToast();
             endTurn(true);
         } else if (shotsLeft <= 0) {
             endTurn(false);
@@ -526,6 +540,13 @@
                 setTimeout(computerTurn, 800);
             }
         }
+    }
+
+    function showSuccessToast() {
+        successToast.style.opacity = '1';
+        setTimeout(() => {
+            successToast.style.opacity = '0';
+        }, 1500);
     }
 
     function acquireTerritory() {
@@ -637,8 +658,8 @@
             if (gameOver || currentPlayer !== P2) return;
             const shotAngle = Math.random() * Math.PI * 2;
             const power = 0.4 + Math.random() * 0.6;
-            const dx = Math.cos(shotAngle) * power * 50;
-            const dy = Math.sin(shotAngle) * power * 50;
+            const dx = Math.cos(shotAngle) * power * 40;
+            const dy = Math.sin(shotAngle) * power * 40;
             launchBallForComputer(dx, dy);
         }, 500);
     }
@@ -647,7 +668,7 @@
         if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed) return;
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len < 10) return;
-        const power = Math.min(len / 50, 1);
+        const power = Math.min(len / 40, 1);
         const speed = power * MAX_SPEED;
         const angle = Math.atan2(dy, dx);
         ball.vx = Math.cos(angle) * speed;
@@ -799,7 +820,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v7.0 - 영역 색상 & 교차 체크 강화');
+    console.log('🏆 땅따먹기 v7.1 - 기지 원형 & 성공 메시지');
 })();
 </script>
 </body>
