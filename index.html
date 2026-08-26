@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v5.7</title>
+    <title>땅따먹기 v5.8</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v5.7</div>
+            <div id="version-badge">v5.8</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -116,8 +116,8 @@
     const NEUTRAL = 0;
 
     let territoryMap = null;
-    let wallMap = null;
-    let tempWallMap = null;
+    let wallMap = null;      // 영구 벽 (성공한 턴의 벽)
+    let tempWallMap = null;  // 현재 턴의 누적 임시 벽 (모든 발사 경로)
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
@@ -133,7 +133,6 @@
     let aimStartX = 0, aimStartY = 0;
     let aimCurrentX = 0, aimCurrentY = 0;
     let aimAngle = 0;
-    let aimPower = 5;
 
     let gaugeAnimId = null;
     let gaugeDirection = 1;
@@ -177,9 +176,8 @@
         turnInProgress = true;
         placingStone = (currentPlayer === P1);
         failed = false;
-        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        tempWallMap = new Uint8Array(BOARD_W * BOARD_H); // 턴 시작 시 초기화
         isAiming = false;
-        aimPower = 5;
         gaugeValueCurrent = 5;
         updateHUD();
         updateGaugeUI();
@@ -302,6 +300,7 @@
         }
         offCtx.putImageData(imgData, 0, 0);
 
+        // 영구 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -310,6 +309,7 @@
                 offCtx.fillRect(x, y, 1, 1);
             }
         }
+        // 임시 벽 (이번 턴 누적)
         for (let i = 0; i < tempWallMap.length; i++) {
             if (tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -431,8 +431,8 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        // 실패 검사: 오직 상대 영역 진입만 실패 (벽 교차는 무시)
-        if (checkFailureAgainstOpponent(prevX, prevY, ball.x, ball.y)) {
+        // 실패 검사 (자신의 영역 + 임시 벽/영구 벽 교차)
+        if (checkFailure(prevX, prevY, ball.x, ball.y)) {
             ball.moving = false;
             ball.vx = 0; ball.vy = 0;
             if (animId) cancelAnimationFrame(animId);
@@ -453,17 +453,24 @@
         return (dx*dx + dy*dy) <= BASE_RADIUS * BASE_RADIUS;
     }
 
-    // 실패 조건: 이동 경로상에 상대 영역이 있으면 실패, 기지 내부는 통과
-    function checkFailureAgainstOpponent(x1, y1, x2, y2) {
+    // 실패 조건: 이동 경로상에 (1) 자신의 영역, (2) 이전에 그린 벽(영구+임시)이 있으면 실패
+    // 단, 기지 내부는 안전
+    function checkFailure(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 0; i <= steps; i++) {
+        for (let i = 1; i < steps; i++) { // 시작점 제외
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideCurrentBase(px, py)) continue; // 기지 내부는 안전
+            if (isInsideCurrentBase(px, py)) continue; // 기지 내부는 통과
+
             const idx = py * BOARD_W + px;
-            if (territoryMap[idx] === (currentPlayer === P1 ? P2 : P1)) {
-                return true; // 상대 영역 발견
+            // 자신의 영역 (이미 획득한 땅) 확인
+            if (territoryMap[idx] === currentPlayer) {
+                return true;
+            }
+            // 벽 확인 (영구 벽 + 이번 턴 누적 임시 벽)
+            if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
+                return true;
             }
         }
         return false;
@@ -783,7 +790,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v5.7 - 실패 조건 단순화');
+    console.log('🏆 땅따먹기 v5.8 - 정확한 실패 조건');
 })();
 </script>
 </body>
