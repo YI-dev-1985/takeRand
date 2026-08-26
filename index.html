@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v5.6 - 실패 조건 개선</title>
+    <title>땅따먹기 v5.7</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v5.6</div>
+            <div id="version-badge">v5.7</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -431,7 +431,8 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        if (checkFailureDuringMove(prevX, prevY, ball.x, ball.y)) {
+        // 실패 검사: 오직 상대 영역 진입만 실패 (벽 교차는 무시)
+        if (checkFailureAgainstOpponent(prevX, prevY, ball.x, ball.y)) {
             ball.moving = false;
             ball.vx = 0; ball.vy = 0;
             if (animId) cancelAnimationFrame(animId);
@@ -452,21 +453,17 @@
         return (dx*dx + dy*dy) <= BASE_RADIUS * BASE_RADIUS;
     }
 
-    function checkFailureDuringMove(x1, y1, x2, y2) {
+    // 실패 조건: 이동 경로상에 상대 영역이 있으면 실패, 기지 내부는 통과
+    function checkFailureAgainstOpponent(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 1; i < steps; i++) {
+        for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
+            if (isInsideCurrentBase(px, py)) continue; // 기지 내부는 안전
             const idx = py * BOARD_W + px;
-            // 현재 플레이어 기지 내부는 실패하지 않음
-            if (isInsideCurrentBase(px, py)) continue;
-            // 상대 영역이거나 벽이면 실패
-            if (territoryMap[idx] !== NEUTRAL && territoryMap[idx] !== currentPlayer) {
-                return true;
-            }
-            if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
-                return true;
+            if (territoryMap[idx] === (currentPlayer === P1 ? P2 : P1)) {
+                return true; // 상대 영역 발견
             }
         }
         return false;
@@ -478,8 +475,7 @@
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            // 기지 내부에는 벽을 칠하지 않음
-            if (isInsideCurrentBase(px, py)) continue;
+            if (isInsideCurrentBase(px, py)) continue; // 기지 내부에는 벽 없음
             for (let dy = -BALL_RADIUS+3; dy <= BALL_RADIUS-3; dy++) {
                 for (let dx = -BALL_RADIUS+3; dx <= BALL_RADIUS-3; dx++) {
                     const nx = px + dx;
@@ -787,7 +783,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v5.6 - 실패 조건 개선');
+    console.log('🏆 땅따먹기 v5.7 - 실패 조건 단순화');
 })();
 </script>
 </body>
