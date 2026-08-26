@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v6.7</title>
+    <title>땅따먹기 v6.8</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -55,7 +55,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v6.7</div>
+            <div id="version-badge">v6.8</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -98,14 +98,14 @@
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
 
-    // ===== 게임 설정 (최적화된 크기) =====
-    const BOARD_W = 1200;
-    const BOARD_H = 700;
-    const BASE_RADIUS = 70;  // 1200×700에서 약 2% (π×70² / 840,000 ≈ 1.83%)
-    const BALL_RADIUS = 8;
-    const WALL_THICKNESS = 4;
+    // ===== 게임 설정 (최적화) =====
+    const BOARD_W = 800;
+    const BOARD_H = 500;
+    const BASE_RADIUS = 45;
+    const BALL_RADIUS = 10;
+    const WALL_THICKNESS = 3;
     const FRICTION = 0.985;
-    const MAX_SPEED = 18;
+    const MAX_SPEED = 15;
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
     const BASE_LOSS_RATIO = 0.5;
@@ -115,8 +115,8 @@
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    const BASE1_X = BOARD_W/2, BASE1_Y = 120;
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 120;
+    const BASE1_X = BOARD_W/2, BASE1_Y = 80;
+    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 80;
     const TOTAL_AREA = BOARD_W * BOARD_H;
 
     let territoryMap = null;
@@ -283,87 +283,71 @@
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvasW, canvasH);
 
-        // 배경 (그리드 없이 단순하게)
-        // 영역 그리기 (픽셀 단위로 직접)
         const cellW = canvasW / BOARD_W;
         const cellH = canvasH / BOARD_H;
 
-        // 영역 맵을 이미지 데이터로 변환하여 그리기
-        const imgData = ctx.createImageData(BOARD_W, BOARD_H);
-        for (let i = 0; i < territoryMap.length; i++) {
-            const val = territoryMap[i];
-            if (val === P1) {
-                imgData.data[i*4] = 78;
-                imgData.data[i*4+1] = 204;
-                imgData.data[i*4+2] = 163;
-                imgData.data[i*4+3] = 255;
-            } else if (val === P2) {
-                imgData.data[i*4] = 255;
-                imgData.data[i*4+1] = 107;
-                imgData.data[i*4+2] = 107;
-                imgData.data[i*4+3] = 255;
-            } else {
-                imgData.data[i*4] = 42;
-                imgData.data[i*4+1] = 42;
-                imgData.data[i*4+2] = 74;
-                imgData.data[i*4+3] = 255;
+        // 영역 그리기 (fillRect 사용)
+        for (let r = 0; r < BOARD_H; r++) {
+            for (let c = 0; c < BOARD_W; c++) {
+                const idx = r * BOARD_W + c;
+                if (territoryMap[idx] === P1) {
+                    ctx.fillStyle = '#4ecca3';
+                    ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
+                } else if (territoryMap[idx] === P2) {
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
+                }
             }
         }
 
-        // 임시 캔버스에 이미지 데이터 그리기
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = BOARD_W;
-        tempCanvas.height = BOARD_H;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.putImageData(imgData, 0, 0);
-
-        // 벽 그리기 (임시 캔버스에)
+        // 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1 || tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
                 const y = Math.floor(i / BOARD_W);
-                tempCtx.fillStyle = '#aaaacc';
-                tempCtx.fillRect(x, y, 1, 1);
+                ctx.fillStyle = '#aaaacc';
+                ctx.fillRect(x * cellW, y * cellH, cellW + 0.5, cellH + 0.5);
             }
         }
 
-        // 기지 그리기
-        // P1 기지
-        tempCtx.fillStyle = 'rgba(78, 204, 163, 0.6)';
-        tempCtx.beginPath();
-        tempCtx.arc(BASE1_X, BASE1_Y, BASE_RADIUS, 0, Math.PI*2);
-        tempCtx.fill();
-        tempCtx.strokeStyle = '#4ecca3';
-        tempCtx.lineWidth = 4;
-        tempCtx.stroke();
-        tempCtx.fillStyle = '#fff';
-        tempCtx.font = 'bold 36px -apple-system, sans-serif';
-        tempCtx.textAlign = 'center';
-        tempCtx.textBaseline = 'middle';
-        tempCtx.fillText('나', BASE1_X, BASE1_Y);
+        // 기지 (반투명 + 테두리)
+        ctx.fillStyle = 'rgba(78, 204, 163, 0.5)';
+        ctx.beginPath();
+        ctx.arc(BASE1_X * cellW, BASE1_Y * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#4ecca3';
+        ctx.lineWidth = 3;
+        ctx.stroke();
 
-        // P2 기지
-        tempCtx.fillStyle = 'rgba(255, 107, 107, 0.6)';
-        tempCtx.beginPath();
-        tempCtx.arc(BASE2_X, BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
-        tempCtx.fill();
-        tempCtx.strokeStyle = '#ff6b6b';
-        tempCtx.lineWidth = 4;
-        tempCtx.stroke();
-        tempCtx.fillStyle = '#fff';
-        tempCtx.fillText('컴', BASE2_X, BASE2_Y);
+        ctx.fillStyle = 'rgba(255, 107, 107, 0.5)';
+        ctx.beginPath();
+        ctx.arc(BASE2_X * cellW, BASE2_Y * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#ff6b6b';
+        ctx.lineWidth = 3;
+        ctx.stroke();
 
-        // 돌 그리기
-        tempCtx.shadowColor = 'rgba(255,255,255,0.9)';
-        tempCtx.shadowBlur = 10;
-        tempCtx.beginPath();
-        tempCtx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2);
-        tempCtx.fillStyle = '#ffffff';
-        tempCtx.fill();
-        tempCtx.shadowBlur = 0;
-        tempCtx.strokeStyle = '#000';
-        tempCtx.lineWidth = 2;
-        tempCtx.stroke();
+        // 기지 텍스트
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 24px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('나', BASE1_X * cellW, BASE1_Y * cellH);
+        ctx.fillText('컴', BASE2_X * cellW, BASE2_Y * cellH);
+
+        // 돌 (항상 최상단에 그리기)
+        const ballScreenX = ball.x * cellW;
+        const ballScreenY = ball.y * cellH;
+        ctx.shadowColor = 'rgba(255,255,255,0.9)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(ballScreenX, ballScreenY, BALL_RADIUS * cellW, 0, Math.PI*2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
         // 조준선
         if (isAiming && !ball.moving && !gameOver && turnInProgress && !placingStone) {
@@ -372,30 +356,27 @@
             const len = Math.sqrt(dx*dx + dy*dy);
             if (len > 10) {
                 aimAngle = Math.atan2(dy, dx);
-                tempCtx.strokeStyle = 'rgba(255,255,255,0.8)';
-                tempCtx.lineWidth = 2;
-                tempCtx.setLineDash([6, 6]);
-                tempCtx.beginPath();
-                tempCtx.moveTo(ball.x, ball.y);
-                tempCtx.lineTo(ball.x + Math.cos(aimAngle)*60, ball.y + Math.sin(aimAngle)*60);
-                tempCtx.stroke();
-                tempCtx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(ballScreenX, ballScreenY);
+                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*60*cellW, ballScreenY + Math.sin(aimAngle)*60*cellH);
+                ctx.stroke();
+                ctx.setLineDash([]);
             }
         }
 
         // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
-            tempCtx.strokeStyle = 'rgba(255,255,255,0.9)';
-            tempCtx.lineWidth = 3;
-            tempCtx.setLineDash([8, 8]);
-            tempCtx.beginPath();
-            tempCtx.arc(BOARD_W/2, currentPlayer === P1 ? BASE1_Y : BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
-            tempCtx.stroke();
-            tempCtx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.arc(BOARD_W/2 * cellW, (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH, BASE_RADIUS * cellW, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.setLineDash([]);
         }
-
-        // 메인 캔버스에 그리기
-        ctx.drawImage(tempCanvas, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
     }
 
     function launchBall() {
@@ -655,8 +636,8 @@
             if (gameOver || currentPlayer !== P2) return;
             const shotAngle = Math.random() * Math.PI * 2;
             const power = 0.4 + Math.random() * 0.6;
-            const dx = Math.cos(shotAngle) * power * 60;
-            const dy = Math.sin(shotAngle) * power * 60;
+            const dx = Math.cos(shotAngle) * power * 50;
+            const dy = Math.sin(shotAngle) * power * 50;
             launchBallForComputer(dx, dy);
         }, 500);
     }
@@ -665,7 +646,7 @@
         if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed) return;
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len < 10) return;
-        const power = Math.min(len / 60, 1);
+        const power = Math.min(len / 50, 1);
         const speed = power * MAX_SPEED;
         const angle = Math.atan2(dy, dx);
         ball.vx = Math.cos(angle) * speed;
@@ -702,4 +683,123 @@
             const baseX = BOARD_W/2;
             const baseY = BASE1_Y;
             const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
-            if (dist <= BASE_RADI
+            if (dist <= BASE_RADIUS - BALL_RADIUS) {
+                ball.x = x;
+                ball.y = y;
+                placingStone = false;
+                updateHUD();
+                draw();
+                btnFire.disabled = false;
+            }
+            return;
+        }
+
+        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
+            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
+            if (distToBall < BALL_RADIUS * 3) {
+                isAiming = true;
+                aimStartX = x;
+                aimStartY = y;
+                aimCurrentX = x;
+                aimCurrentY = y;
+                btnFire.disabled = false;
+                startGaugeAnimation();
+                updateHUD();
+                draw();
+            }
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        if (!isAiming) return;
+        const touch = e.touches[0];
+        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
+        aimCurrentX = x;
+        aimCurrentY = y;
+        draw();
+    }
+
+    function handleTouchEnd(e) {
+        e.preventDefault();
+    }
+
+    function handleMouseDown(e) {
+        if (gameOver || ball.moving || !turnInProgress) return;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        if (placingStone && currentPlayer === P1) {
+            const baseX = BOARD_W/2;
+            const baseY = BASE1_Y;
+            const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
+            if (dist <= BASE_RADIUS - BALL_RADIUS) {
+                ball.x = x;
+                ball.y = y;
+                placingStone = false;
+                updateHUD();
+                draw();
+                btnFire.disabled = false;
+            }
+            return;
+        }
+        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
+            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
+            if (distToBall < BALL_RADIUS * 3) {
+                isAiming = true;
+                aimStartX = x;
+                aimStartY = y;
+                aimCurrentX = x;
+                aimCurrentY = y;
+                btnFire.disabled = false;
+                startGaugeAnimation();
+                updateHUD();
+                draw();
+            }
+        }
+    }
+
+    function handleMouseMove(e) {
+        if (!isAiming) return;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        aimCurrentX = x;
+        aimCurrentY = y;
+        draw();
+    }
+
+    function handleMouseUp(e) {
+        // 발사는 버튼으로만
+    }
+
+    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
+    canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
+    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
+    canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+
+    btnFire.addEventListener('click', () => {
+        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+            launchBall();
+        }
+    });
+    btnFire.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+            launchBall();
+        }
+    });
+
+    btnRestart.addEventListener('click', () => { initGame(); });
+    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+
+    resizeCanvas();
+    initGame();
+    console.log('🏆 땅따먹기 v6.8 - 기지/돌 표시 보장');
+})();
+</script>
+</body>
+</html>
