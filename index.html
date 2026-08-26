@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v6.4</title>
+    <title>땅따먹기 v6.5</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -55,7 +55,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v6.4</div>
+            <div id="version-badge">v6.5</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -98,10 +98,9 @@
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
 
-    // ===== 게임 설정 =====
     const BOARD_W = 2400;
     const BOARD_H = 1400;
-    const BASE_RADIUS = 148;  // π×148² / (2400×1400) ≈ 2.04%
+    const BASE_RADIUS = 148;
     const BALL_RADIUS = 12;
     const WALL_THICKNESS = 6;
     const FRICTION = 0.985;
@@ -119,7 +118,6 @@
     const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 250;
     const BASE_AREA = Math.PI * BASE_RADIUS * BASE_RADIUS;
     const TOTAL_AREA = BOARD_W * BOARD_H;
-    const BASE_RATIO = BASE_AREA / TOTAL_AREA;
 
     let territoryMap = null;
     let wallMap = null;
@@ -606,14 +604,7 @@
         btnFire.disabled = true;
         updateHUD();
 
-        let p1Count = 0, p2Count = 0;
-        for (let i = 0; i < territoryMap.length; i++) {
-            if (territoryMap[i] === P1) p1Count++;
-            else if (territoryMap[i] === P2) p2Count++;
-        }
-
-        // 기지 영역 50% 이상 빼앗겼는지 확인
-        // 기지 내 픽셀 중 현재 플레이어 소유가 아닌 픽셀 비율
+        // 기지 영역 빼앗긴 비율 계산
         let p1BaseLost = 0, p2BaseLost = 0;
         const p1BaseTotal = BASE_AREA;
         const p2BaseTotal = BASE_AREA;
@@ -697,4 +688,19 @@
     function getBoardCoords(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
         return {
-            x: (clientX - rect.left) * scaleX
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        if (gameOver || ball.moving || !turnInProgress) return;
+        const touch = e.touches[0];
+        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
+
+        if (placingStone && currentPlayer === P1) {
+            const baseX = BOARD_W/2;
+            const baseY = BASE1_Y;
+            const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
+            if (dist <= BASE_RADIUS - B
