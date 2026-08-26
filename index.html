@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v2.0 - 돌 튕기기 대전</title>
+    <title>땅따먹기 v2.1 - 돌 튕기기 대전</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -48,7 +48,7 @@
         </div>
         <div class="hud-center">
             <div id="turn-indicator">내 차례</div>
-            <div id="version-badge">v2.0</div>
+            <div id="version-badge">v2.1</div>
         </div>
         <div class="hud-right">
             <div class="hud-name" style="color:var(--player2);">🔴 컴퓨터</div>
@@ -77,11 +77,11 @@
     const p2ScoreEl = document.getElementById('p2-score');
     const turnIndicator = document.getElementById('turn-indicator');
 
-    const GRID = 7;  // 7x7 보드
-    const TURN_LIMIT = 3;  // 3턴 안에 기지 복귀
+    const GRID = 7;
+    const TURN_LIMIT = 3;
     const PLAYER1 = 1, PLAYER2 = 2;
 
-    let board = [];  // 0=중립, 1=플레이어1 영역, 2=플레이어2 영역
+    let board = [];
     let base1 = {row:0, col:0};
     let base2 = {row:GRID-1, col:GRID-1};
     let stonePos = {row:0, col:0};
@@ -125,6 +125,11 @@
         const rect = wrapper.getBoundingClientRect();
         dpr = window.devicePixelRatio || 1;
         const maxSize = Math.min(rect.width-8, rect.height-8);
+        if (maxSize <= 0) {
+            // 아직 레이아웃 준비 안 됨
+            requestAnimationFrame(resizeCanvas);
+            return;
+        }
         canvasW = canvasH = Math.floor(maxSize);
         canvas.style.width = canvasW+'px';
         canvas.style.height = canvasH+'px';
@@ -136,6 +141,7 @@
     }
 
     function draw() {
+        if (cellSize <= 0 || !board || board.length === 0) return;
         ctx.clearRect(0,0,canvasW,canvasH);
         // 배경
         ctx.fillStyle = '#1a1a2e';
@@ -149,62 +155,57 @@
                 if (board[r][c]===PLAYER1) ctx.fillStyle = '#4ecca3';
                 else if (board[r][c]===PLAYER2) ctx.fillStyle = '#ff6b6b';
                 else ctx.fillStyle = '#2a2a4a';
-                roundRect(ctx, x+pad, y+pad, size, size, 6);
-                ctx.fill();
+                // 안전한 roundRect: 직접 사각형 + 모서리 둥글게 대신 fillRect 사용
+                ctx.fillRect(x+pad, y+pad, size, size);
                 // 기지 표시
                 if (r===base1.row && c===base1.col) {
-                    ctx.fillStyle = '#ffffff30';
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
                     ctx.beginPath();
-                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.25, 0, Math.PI*2);
+                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.28, 0, Math.PI*2);
                     ctx.fill();
                     ctx.fillStyle = '#fff';
-                    ctx.font = `bold ${cellSize*0.4}px sans-serif`;
+                    ctx.font = `bold ${cellSize*0.5}px -apple-system, sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText('B1', x+cellSize/2, y+cellSize/2);
                 }
                 if (r===base2.row && c===base2.col) {
-                    ctx.fillStyle = '#ffffff30';
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
                     ctx.beginPath();
-                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.25, 0, Math.PI*2);
+                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.28, 0, Math.PI*2);
                     ctx.fill();
                     ctx.fillStyle = '#fff';
-                    ctx.font = `bold ${cellSize*0.4}px sans-serif`;
+                    ctx.font = `bold ${cellSize*0.5}px -apple-system, sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText('B2', x+cellSize/2, y+cellSize/2);
                 }
             }
         }
-        // 돌 그리기
+        // 돌 그리기 (항상 보이도록)
         const sx = stonePos.col*cellSize + cellSize/2;
         const sy = stonePos.row*cellSize + cellSize/2;
-        ctx.shadowColor = 'rgba(255,255,255,0.5)';
-        ctx.shadowBlur = 12;
+        const radius = cellSize*0.35; // 조금 크게
+        ctx.shadowColor = 'rgba(255,255,255,0.7)';
+        ctx.shadowBlur = 15;
         ctx.beginPath();
-        ctx.arc(sx, sy, cellSize*0.3, 0, Math.PI*2);
+        ctx.arc(sx, sy, radius, 0, Math.PI*2);
         ctx.fillStyle = currentPlayer===PLAYER1 ? '#4ecca3' : '#ff6b6b';
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 3;
         ctx.stroke();
-    }
-
-    function roundRect(ctx, x, y, w, h, r) {
+        // 돌 위에 작은 하이라이트
         ctx.beginPath();
-        ctx.moveTo(x+r, y);
-        ctx.arcTo(x+w, y, x+w, y+h, r);
-        ctx.arcTo(x+w, y+h, x, y+h, r);
-        ctx.arcTo(x, y+h, x, y, r);
-        ctx.arcTo(x, y, x+w, y, r);
-        ctx.closePath();
+        ctx.arc(sx - radius*0.25, sy - radius*0.25, radius*0.3, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fill();
     }
 
-    // 스와이프 방향으로 돌 튕기기
     function flickStone(direction) {
         if (animating || gameOver) return;
-        if (currentPlayer !== PLAYER1) return; // 플레이어 턴만
+        if (currentPlayer !== PLAYER1) return;
 
         let dr=0, dc=0;
         switch(direction) {
@@ -216,7 +217,7 @@
 
         const newRow = stonePos.row + dr;
         const newCol = stonePos.col + dc;
-        if (newRow<0||newRow>=GRID||newCol<0||newCol>=GRID) return; // 보드 밖
+        if (newRow<0||newRow>=GRID||newCol<0||newCol>=GRID) return;
 
         animating = true;
         const from = {...stonePos};
@@ -242,11 +243,9 @@
     }
 
     function afterMove() {
-        // 기지 복귀 체크
         const currentBase = currentPlayer===PLAYER1 ? base1 : base2;
         if (stonePos.row===currentBase.row && stonePos.col===currentBase.col) {
             if (hasLeftBase) {
-                // 복귀 성공, 영역 확장 없음 (이미 기지)
                 turnsSinceLeave = 0;
                 hasLeftBase = false;
                 switchTurn();
@@ -254,7 +253,6 @@
             return;
         }
 
-        // 영역 확장: 현재 플레이어가 지나간 칸을 자신의 영역으로
         if (board[stonePos.row][stonePos.col] === 0) {
             board[stonePos.row][stonePos.col] = currentPlayer;
         }
@@ -266,33 +264,28 @@
             turnsSinceLeave++;
         }
 
-        // 턴 제한 초과 체크
         if (turnsSinceLeave > TURN_LIMIT) {
             endGame(false, `${currentPlayer===PLAYER1?'나':'컴퓨터'} 패배! 3턴 안에 기지 복귀 실패`);
             return;
         }
 
-        // 턴 종료, 상대에게 넘김
         switchTurn();
     }
 
     function switchTurn() {
         currentPlayer = currentPlayer===PLAYER1 ? PLAYER2 : PLAYER1;
-        // 돌을 새 플레이어의 기지로 이동
         stonePos = {...(currentPlayer===PLAYER1 ? base1 : base2)};
         hasLeftBase = false;
         turnsSinceLeave = 0;
         updateHUD();
         draw();
         if (currentPlayer===PLAYER2 && !gameOver) {
-            // 컴퓨터 턴 자동 실행
             setTimeout(computerTurn, 800);
         }
     }
 
     function computerTurn() {
         if (gameOver || currentPlayer!==PLAYER2) return;
-        // 간단한 AI: 무작위 방향으로 한 칸 이동
         const directions = ['up','down','left','right'];
         const valid = directions.filter(dir => {
             let dr=0, dc=0;
@@ -302,7 +295,6 @@
         });
         if (valid.length===0) return;
         const dir = valid[Math.floor(Math.random()*valid.length)];
-        // 컴퓨터도 같은 flick 함수 사용 (플레이어 턴 검사 우회)
         const dr = dir==='up'?-1:dir==='down'?1:0;
         const dc = dir==='left'?-1:dir==='right'?1:0;
         const newRow = stonePos.row+dr, newCol = stonePos.col+dc;
@@ -333,27 +325,17 @@
 
     // 입력 처리
     let touchStartX=0, touchStartY=0;
-    function handleTouchStart(e) {
-        e.preventDefault();
-        const t = e.touches[0];
-        touchStartX = t.clientX; touchStartY = t.clientY;
-    }
-    function handleTouchEnd(e) {
+    canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); const t=e.touches[0]; touchStartX=t.clientX; touchStartY=t.clientY; }, {passive:false});
+    canvas.addEventListener('touchend', (e)=>{
         e.preventDefault();
         if (!touchStartX) return;
-        const t = e.changedTouches[0];
-        const dx = t.clientX - touchStartX;
-        const dy = t.clientY - touchStartY;
+        const t=e.changedTouches[0];
+        const dx=t.clientX-touchStartX, dy=t.clientY-touchStartY;
         if (Math.abs(dx)<10 && Math.abs(dy)<10) return;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            flickStone(dx>0 ? 'right' : 'left');
-        } else {
-            flickStone(dy>0 ? 'down' : 'up');
-        }
+        if (Math.abs(dx)>Math.abs(dy)) flickStone(dx>0?'right':'left');
+        else flickStone(dy>0?'down':'up');
         touchStartX=0; touchStartY=0;
-    }
-    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
-    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
+    }, {passive:false});
     canvas.addEventListener('mousedown', (e)=>{ touchStartX=e.clientX; touchStartY=e.clientY; });
     canvas.addEventListener('mouseup', (e)=>{
         const dx=e.clientX-touchStartX, dy=e.clientY-touchStartY;
@@ -371,7 +353,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v2.0 - 돌 튕기기 대전 시작!');
+    console.log('🏆 땅따먹기 v2.1 - 돌 튕기기 대전 시작!');
 })();
 </script>
 </body>
