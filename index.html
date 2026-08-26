@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v5.2 - 힘 표시</title>
+    <title>땅따먹기 v5.4</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -47,7 +47,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v5.2</div>
+            <div id="version-badge">v5.4</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -65,7 +65,7 @@
             <button id="btn-restart">🔄 다시 시작</button>
         </div>
     </div>
-    <div id="instructions">👆 기지 내부 터치 → 드래그로 발사 (힘 표시) 실패 시 이동 선 삭제</div>
+    <div id="instructions">👆 기지 내부 터치 → 드래그로 발사 (최대 3회, 기지 복귀 시 영역 획득)</div>
 </div>
 <script>
 (function() {
@@ -79,7 +79,7 @@
     const p2ScoreEl = document.getElementById('p2-score');
     const turnInfoEl = document.getElementById('turn-info');
 
-    // ===== 게임 설정 =====
+    // 게임 설정
     const BOARD_W = 1400;
     const BOARD_H = 900;
     const BALL_RADIUS = 14;
@@ -90,7 +90,7 @@
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
     const WIN_THRESHOLD = 0.01;
-    const POWER_MAX_DIST = 80;  // 최대 힘에 도달하는 드래그 거리
+    const POWER_MAX_DIST = 80;
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -214,7 +214,6 @@
         offscreen.height = BOARD_H;
         const offCtx = offscreen.getContext('2d');
 
-        // 영역 픽셀
         const imgData = offCtx.createImageData(BOARD_W, BOARD_H);
         for (let i = 0; i < territoryMap.length; i++) {
             const val = territoryMap[i];
@@ -237,7 +236,7 @@
         }
         offCtx.putImageData(imgData, 0, 0);
 
-        // 벽
+        // 영구 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -246,6 +245,7 @@
                 offCtx.fillRect(x, y, 1, 1);
             }
         }
+        // 임시 벽
         for (let i = 0; i < tempWallMap.length; i++) {
             if (tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -255,7 +255,6 @@
             }
         }
 
-        // 기지
         drawBase(offCtx, BOARD_W/2, 150, BASE_RADIUS, '나', P1);
         drawBase(offCtx, BOARD_W/2, BOARD_H-150, BASE_RADIUS, '컴', P2);
 
@@ -275,7 +274,7 @@
         offCtx.fillStyle = 'rgba(255,255,255,0.6)';
         offCtx.fill();
 
-        // 드래그 가이드 및 힘 표시
+        // 드래그 가이드
         if (dragging && !ball.moving && !gameOver && turnInProgress && !placingStone) {
             const dx = dragStartX - dragCurrentX;
             const dy = dragStartY - dragCurrentY;
@@ -293,7 +292,7 @@
                 offCtx.stroke();
                 offCtx.setLineDash([]);
 
-                // 힘 게이지 바 (돌 아래에 표시)
+                // 힘 게이지
                 const barWidth = 80;
                 const barHeight = 10;
                 const barX = ball.x - barWidth/2;
@@ -307,8 +306,6 @@
                 offCtx.strokeStyle = '#fff';
                 offCtx.lineWidth = 1;
                 offCtx.strokeRect(barX-2, barY-2, barWidth+4, barHeight+4);
-
-                // 힘 백분율 텍스트
                 offCtx.fillStyle = '#fff';
                 offCtx.font = 'bold 20px -apple-system, sans-serif';
                 offCtx.textAlign = 'center';
@@ -317,7 +314,6 @@
             }
         }
 
-        // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
             offCtx.strokeStyle = 'rgba(255,255,255,0.8)';
             offCtx.lineWidth = 4;
@@ -397,6 +393,7 @@
         if (checkFailureDuringMove(prevX, prevY, ball.x, ball.y)) {
             ball.moving = false;
             ball.vx = 0; ball.vy = 0;
+            if (animId) cancelAnimationFrame(animId);
             handleFailure();
             return;
         }
@@ -409,7 +406,7 @@
 
     function checkFailureDuringMove(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 0; i <= steps; i++) {
+        for (let i = 1; i < steps; i++) {  // 시작점 제외 (현재 위치는 벽일 수 있으므로)
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
@@ -426,7 +423,7 @@
 
     function paintTrailToTemp(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 0; i <= steps; i++) {
+        for (let i = 1; i < steps; i++) {  // 시작점과 끝점은 벽으로 칠하지 않음
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
@@ -446,6 +443,7 @@
     function handleFailure() {
         failed = true;
         turnInProgress = false;
+        if (animId) cancelAnimationFrame(animId);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         updateHUD();
         draw();
@@ -470,6 +468,10 @@
             }
             turnInProgress = true;
             draw();
+            // 컴퓨터가 계속 발사하도록 예약
+            if (currentPlayer === P2 && !gameOver) {
+                setTimeout(computerTurn, 800);
+            }
         }
     }
 
@@ -515,6 +517,7 @@
         turnInProgress = false;
         ball.moving = false;
         ball.vx = 0; ball.vy = 0;
+        if (animId) cancelAnimationFrame(animId);
         if (!success) {
             tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         }
@@ -688,7 +691,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v5.2 - 힘 표시 추가 시작!');
+    console.log('🏆 땅따먹기 v5.4 - 발사 실패 수정 & 컴퓨터 3턴');
 })();
 </script>
 </body>
