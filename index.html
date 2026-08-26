@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>땅따먹기 - Land Grab</title>
     <style>
         :root {
@@ -18,809 +17,427 @@
             --player-color: #ff6b6b;
             --shadow: rgba(0, 0, 0, 0.5);
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            touch-action: none;
-            -webkit-touch-action: none;
-            overscroll-behavior: none;
-        }
-
-        #game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            max-width: 600px;
-            padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-            gap: 8px;
-            position: relative;
-        }
-
-        #hud {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 8px 14px;
-            background: var(--panel);
-            border-radius: 14px;
-            box-shadow: 0 4px 16px var(--shadow);
-            flex-shrink: 0;
-            min-height: 52px;
-        }
-
-        .hud-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text);
-            font-weight: 600;
-            font-size: clamp(14px, 3vw, 18px);
-            letter-spacing: 0.5px;
-        }
-
-        .hud-icon {
-            font-size: clamp(18px, 4vw, 24px);
-            line-height: 1;
-        }
-
-        #score {
-            color: var(--gold);
-            font-size: clamp(18px, 4.5vw, 26px);
-            font-weight: 800;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        #timer {
-            color: var(--accent);
-            font-size: clamp(18px, 4.5vw, 26px);
-            font-weight: 800;
-            min-width: 44px;
-            text-align: center;
-            font-variant-numeric: tabular-nums;
-        }
-
-        #canvas-wrapper {
-            position: relative;
-            flex: 1;
-            width: 100%;
-            min-height: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        canvas {
-            display: block;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px var(--shadow), 0 0 0 2px rgba(255, 255, 255, 0.06);
-            background: var(--panel);
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            touch-action: none;
-            -webkit-touch-action: none;
-        }
-
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.75);
-            border-radius: 16px;
-            z-index: 10;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.35s ease;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-
-        #overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        #overlay-title {
-            font-size: clamp(28px, 7vw, 44px);
-            font-weight: 900;
-            color: var(--gold);
-            margin-bottom: 6px;
-            text-shadow: 0 2px 12px rgba(255, 215, 0, 0.4);
-            letter-spacing: 1px;
-        }
-
-        #overlay-subtitle {
-            font-size: clamp(14px, 3.5vw, 20px);
-            color: #ccc;
-            margin-bottom: 18px;
-            text-align: center;
-            padding: 0 16px;
-            line-height: 1.4;
-        }
-
-        #overlay-score {
-            font-size: clamp(20px, 5vw, 32px);
-            color: #fff;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        #overlay-score span {
-            color: var(--gold);
-            font-size: clamp(28px, 7vw, 44px);
-            font-weight: 900;
-        }
-
-        #btn-restart {
-            padding: 14px 40px;
-            font-size: clamp(16px, 4vw, 22px);
-            font-weight: 700;
-            color: #fff;
-            background: var(--accent);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            letter-spacing: 1px;
-            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            touch-action: manipulation;
-            -webkit-touch-action: manipulation;
-        }
-
-        #btn-restart:active {
-            transform: scale(0.95);
-            box-shadow: 0 3px 10px rgba(233, 69, 96, 0.3);
-        }
-
-        #btn-restart:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 28px rgba(233, 69, 96, 0.5);
-        }
-
-        #hint {
-            font-size: clamp(11px, 2.5vw, 14px);
-            color: #888;
-            text-align: center;
-            flex-shrink: 0;
-            letter-spacing: 0.5px;
-            padding: 2px 0;
-        }
-
-        @media (max-width: 400px) {
-            #game-container {
-                padding: 6px 6px max(6px, env(safe-area-inset-bottom)) 6px;
-                gap: 4px;
-            }
-            #hud {
-                padding: 6px 10px;
-                border-radius: 10px;
-                min-height: 42px;
-            }
-            canvas {
-                border-radius: 12px;
-            }
-            #overlay {
-                border-radius: 12px;
-            }
-            #btn-restart {
-                padding: 12px 30px;
-            }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+        html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; -webkit-touch-action:none; overscroll-behavior:none; }
+        #game-container { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; max-width:600px; padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap:8px; position:relative; }
+        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 14px; background:var(--panel); border-radius:14px; box-shadow:0 4px 16px var(--shadow); flex-shrink:0; min-height:52px; }
+        .hud-item { display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:clamp(14px, 3vw, 18px); letter-spacing:0.5px; }
+        .hud-icon { font-size:clamp(18px, 4vw, 24px); line-height:1; }
+        #score { color:var(--gold); font-size:clamp(18px, 4.5vw, 26px); font-weight:800; min-width:40px; text-align:center; }
+        #timer { color:var(--accent); font-size:clamp(18px, 4.5vw, 26px); font-weight:800; min-width:44px; text-align:center; font-variant-numeric:tabular-nums; }
+        #canvas-wrapper { position:relative; flex:1; width:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
+        canvas { display:block; border-radius:16px; box-shadow:0 8px 32px var(--shadow), 0 0 0 2px rgba(255,255,255,0.06); background:var(--panel); width:100%; height:100%; object-fit:contain; touch-action:none; -webkit-touch-action:none; }
+        #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); border-radius:16px; z-index:10; opacity:0; pointer-events:none; transition:opacity 0.35s ease; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+        #overlay.active { opacity:1; pointer-events:auto; }
+        #overlay-title { font-size:clamp(28px, 7vw, 44px); font-weight:900; color:var(--gold); margin-bottom:6px; text-shadow:0 2px 12px rgba(255,215,0,0.4); letter-spacing:1px; }
+        #overlay-subtitle { font-size:clamp(14px, 3.5vw, 20px); color:#ccc; margin-bottom:18px; text-align:center; padding:0 16px; line-height:1.4; }
+        #overlay-score { font-size:clamp(20px, 5vw, 32px); color:#fff; font-weight:700; margin-bottom:8px; }
+        #overlay-score span { color:var(--gold); font-size:clamp(28px, 7vw, 44px); font-weight:900; }
+        #btn-restart { padding:14px 40px; font-size:clamp(16px, 4vw, 22px); font-weight:700; color:#fff; background:var(--accent); border:none; border-radius:50px; cursor:pointer; letter-spacing:1px; box-shadow:0 6px 20px rgba(233,69,96,0.4); transition:transform 0.15s ease, box-shadow 0.15s ease; touch-action:manipulation; -webkit-touch-action:manipulation; }
+        #btn-restart:active { transform:scale(0.95); box-shadow:0 3px 10px rgba(233,69,96,0.3); }
+        #btn-restart:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(233,69,96,0.5); }
+        #hint { font-size:clamp(11px, 2.5vw, 14px); color:#888; text-align:center; flex-shrink:0; letter-spacing:0.5px; padding:2px 0; }
+        @media (max-width:400px) {
+            #game-container { padding:6px 6px max(6px, env(safe-area-inset-bottom)) 6px; gap:4px; }
+            #hud { padding:6px 10px; border-radius:10px; min-height:42px; }
+            canvas { border-radius:12px; }
+            #overlay { border-radius:12px; }
+            #btn-restart { padding:12px 30px; }
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="hud">
-            <div class="hud-item">
-                <span class="hud-icon">🏆</span>
-                <span>점수</span>
-                <span id="score">0</span>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">⏱️</span>
-                <span id="timer">60</span>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">🗺️</span>
-                <span id="remaining">0</span>
-            </div>
-        </div>
-
-        <div id="canvas-wrapper">
-            <canvas id="gameCanvas"></canvas>
-            <div id="overlay">
-                <div id="overlay-title">🏆 땅따먹기</div>
-                <div id="overlay-subtitle">스와이프해서 땅을 차지하세요!</div>
-                <div id="overlay-score">점수: <span id="final-score">0</span></div>
-                <button id="btn-restart">🔄 다시 시작</button>
-            </div>
-        </div>
-
-        <div id="hint">👆 스와이프: 위·아래·좌·우 이동</div>
+<div id="game-container">
+    <div id="hud">
+        <div class="hud-item"><span class="hud-icon">🏆</span><span>점수</span><span id="score">0</span></div>
+        <div class="hud-item"><span class="hud-icon">⏱️</span><span id="timer">60</span></div>
+        <div class="hud-item"><span class="hud-icon">🗺️</span><span id="remaining">0</span></div>
     </div>
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="overlay">
+            <div id="overlay-title">🏆 땅따먹기</div>
+            <div id="overlay-subtitle">스와이프해서 땅을 차지하세요!</div>
+            <div id="overlay-score">점수: <span id="final-score">0</span></div>
+            <button id="btn-restart">🔄 다시 시작</button>
+        </div>
+    </div>
+    <div id="hint">👆 스와이프: 위·아래·좌·우 이동</div>
+</div>
+<script>
+(function() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlaySubtitle = document.getElementById('overlay-subtitle');
+    const finalScoreEl = document.getElementById('final-score');
+    const btnRestart = document.getElementById('btn-restart');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const remainingEl = document.getElementById('remaining');
 
-    <script>
-        (function() {
-            // === 캔버스 & 컨텍스트 ===
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
-            const overlay = document.getElementById('overlay');
-            const overlayTitle = document.getElementById('overlay-title');
-            const overlaySubtitle = document.getElementById('overlay-subtitle');
-            const finalScoreEl = document.getElementById('final-score');
-            const btnRestart = document.getElementById('btn-restart');
-            const scoreEl = document.getElementById('score');
-            const timerEl = document.getElementById('timer');
-            const remainingEl = document.getElementById('remaining');
+    const GRID_SIZE = 10;
+    const GAME_DURATION = 60;
+    const PLAYER_START = { row: 0, col: 0 };
 
-            // === 게임 설정 ===
-            const GRID_SIZE = 10; // 10x10
-            const GAME_DURATION = 60; // 초
-            const PLAYER_START = { row: 0, col: 0 };
+    let grid = [];
+    let playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
+    let score = 0;
+    let remaining = 0;
+    let timeLeft = GAME_DURATION;
+    let gameActive = false;
+    let gameEnded = false;
+    let animating = false;
+    let animProgress = 0;
+    let animFrom = { row: 0, col: 0 };
+    let animTo = { row: 0, col: 0 };
+    let cellSize = 0;
+    let gridOffsetX = 0;
+    let gridOffsetY = 0;
+    let dpr = 1;
+    let canvasWidth = 0;
+    let canvasHeight = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchActive = false;
+    let isSwiping = false;
+    const SWIPE_THRESHOLD = 20;
+    let timerInterval = null;
 
-            // === 상태 변수 ===
-            let grid = [];
-            let playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
-            let score = 0;
-            let remaining = 0;
-            let timeLeft = GAME_DURATION;
-            let gameActive = false;
-            let gameEnded = false;
-            let animating = false;
-            let animProgress = 0; // 0~1
-            let animFrom = { row: 0, col: 0 };
-            let animTo = { row: 0, col: 0 };
-            let cellSize = 0;
-            let gridOffsetX = 0;
-            let gridOffsetY = 0;
-            let dpr = 1;
-            let canvasWidth = 0;
-            let canvasHeight = 0;
+    function initGrid() {
+        grid = [];
+        for (let r = 0; r < GRID_SIZE; r++) {
+            grid[r] = [];
+            for (let c = 0; c < GRID_SIZE; c++) {
+                grid[r][c] = false;
+            }
+        }
+        grid[PLAYER_START.row][PLAYER_START.col] = true;
+        playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
+        score = 1;
+        remaining = GRID_SIZE * GRID_SIZE - 1;
+        timeLeft = GAME_DURATION;
+        gameActive = true;
+        gameEnded = false;
+        animating = false;
+        animProgress = 0;
+        updateHUD();
+        overlay.classList.remove('active');
+    }
 
-            // 터치/마우스 스와이프 추적
-            let touchStartX = 0;
-            let touchStartY = 0;
-            let touchActive = false;
-            let isSwiping = false;
-            const SWIPE_THRESHOLD = 20; // px
+    function updateHUD() {
+        scoreEl.textContent = score;
+        timerEl.textContent = Math.ceil(timeLeft);
+        remainingEl.textContent = remaining;
+    }
 
-            // 타이머 ID
-            let timerInterval = null;
+    function resizeCanvas() {
+        const wrapper = document.getElementById('canvas-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        dpr = window.devicePixelRatio || 1;
+        const maxW = rect.width - 4;
+        const maxH = rect.height - 4;
+        const maxSize = Math.min(maxW, maxH);
+        const displaySize = Math.floor(maxSize);
+        canvasWidth = displaySize;
+        canvasHeight = displaySize;
+        canvas.style.width = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+        canvas.width = Math.floor(displaySize * dpr);
+        canvas.height = Math.floor(displaySize * dpr);
+        cellSize = displaySize / GRID_SIZE;
+        gridOffsetX = 0;
+        gridOffsetY = 0;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
-            // === 초기화 ===
-            function initGrid() {
-                grid = [];
-                for (let r = 0; r < GRID_SIZE; r++) {
-                    grid[r] = [];
-                    for (let c = 0; c < GRID_SIZE; c++) {
-                        grid[r][c] = false; // 미점유
-                    }
+    function draw() {
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        const padding = Math.max(2, cellSize * 0.08);
+        const tileSize = cellSize - padding * 2;
+        const borderRadius = Math.min(6, tileSize * 0.18);
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const x = c * cellSize + padding;
+                const y = r * cellSize + padding;
+                const isClaimed = grid[r][c];
+                const isPlayerHere = (r === playerPos.row && c === playerPos.col && !animating);
+                ctx.fillStyle = isClaimed ? '#4ecca3' : '#2a2a4a';
+                roundRect(ctx, x, y, tileSize, tileSize, borderRadius);
+                ctx.fill();
+                ctx.strokeStyle = isClaimed ? 'rgba(78,204,163,0.6)' : 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                if (isClaimed) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                    roundRect(ctx, x + tileSize * 0.15, y + tileSize * 0.15, tileSize * 0.7, tileSize * 0.7, borderRadius * 0.7);
+                    ctx.fill();
                 }
-                // 시작 타일 점유
-                grid[PLAYER_START.row][PLAYER_START.col] = true;
-                playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
-                score = 1;
-                remaining = GRID_SIZE * GRID_SIZE - 1;
-                timeLeft = GAME_DURATION;
-                gameActive = true;
-                gameEnded = false;
+            }
+        }
+        const px = playerPos.col * cellSize + cellSize / 2;
+        const py = playerPos.row * cellSize + cellSize / 2;
+        const playerRadius = cellSize * 0.32;
+        ctx.shadowColor = 'rgba(255,107,107,0.6)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 3;
+        ctx.beginPath();
+        ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.beginPath();
+        ctx.arc(px - playerRadius * 0.25, py - playerRadius * 0.25, playerRadius * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        if (animating) {
+            const fromX = animFrom.col * cellSize + cellSize / 2;
+            const fromY = animFrom.row * cellSize + cellSize / 2;
+            const toX = animTo.col * cellSize + cellSize / 2;
+            const toY = animTo.row * cellSize + cellSize / 2;
+            const currentX = fromX + (toX - fromX) * animProgress;
+            const currentY = fromY + (toY - fromY) * animProgress;
+            ctx.shadowColor = 'rgba(255,107,107,0.6)';
+            ctx.shadowBlur = 14;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 3;
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.beginPath();
+            ctx.arc(currentX - playerRadius * 0.25, currentY - playerRadius * 0.25, playerRadius * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+        }
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
+    function tryMove(dr, dc) {
+        if (!gameActive || gameEnded || animating) return;
+        const newRow = playerPos.row + dr;
+        const newCol = playerPos.col + dc;
+        if (newRow < 0 || newRow >= GRID_SIZE || newCol < 0 || newCol >= GRID_SIZE) return;
+        animFrom = { row: playerPos.row, col: playerPos.col };
+        animTo = { row: newRow, col: newCol };
+        animating = true;
+        animProgress = 0;
+        const animDuration = 120;
+        const startTime = performance.now();
+        function animateStep(now) {
+            const elapsed = now - startTime;
+            animProgress = Math.min(1, elapsed / animDuration);
+            animProgress = animProgress < 0.5 ? 2 * animProgress * animProgress : 1 - Math.pow(-2 * animProgress + 2, 2) / 2;
+            if (animProgress < 1) {
+                requestAnimationFrame(animateStep);
+            } else {
                 animating = false;
                 animProgress = 0;
-                updateHUD();
-                overlay.classList.remove('active');
-            }
-
-            function updateHUD() {
-                scoreEl.textContent = score;
-                timerEl.textContent = Math.ceil(timeLeft);
-                remainingEl.textContent = remaining;
-            }
-
-            // === 캔버스 크기 조정 ===
-            function resizeCanvas() {
-                const wrapper = document.getElementById('canvas-wrapper');
-                const rect = wrapper.getBoundingClientRect();
-                dpr = window.devicePixelRatio || 1;
-
-                // 사용 가능한 최대 영역 (패딩 고려)
-                const maxW = rect.width - 4;
-                const maxH = rect.height - 4;
-
-                // 정사각형 그리드를 유지하면서 크기 계산
-                const maxSize = Math.min(maxW, maxH);
-                const displaySize = Math.floor(maxSize);
-
-                canvasWidth = displaySize;
-                canvasHeight = displaySize;
-
-                canvas.style.width = displaySize + 'px';
-                canvas.style.height = displaySize + 'px';
-                canvas.width = Math.floor(displaySize * dpr);
-                canvas.height = Math.floor(displaySize * dpr);
-
-                // 셀 크기 계산
-                cellSize = displaySize / GRID_SIZE;
-                gridOffsetX = 0;
-                gridOffsetY = 0;
-
-                // 캔버스 컨텍스트 스케일 조정
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            }
-
-            // === 렌더링 ===
-            function draw() {
-                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-                const padding = Math.max(2, cellSize * 0.08);
-                const tileSize = cellSize - padding * 2;
-                const borderRadius = Math.min(6, tileSize * 0.18);
-
-                // 배경 패널
-                ctx.fillStyle = '#16213e';
-                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-                // 타일 그리기
-                for (let r = 0; r < GRID_SIZE; r++) {
-                    for (let c = 0; c < GRID_SIZE; c++) {
-                        const x = c * cellSize + padding;
-                        const y = r * cellSize + padding;
-                        const isClaimed = grid[r][c];
-                        const isPlayerHere = (r === playerPos.row && c === playerPos.col && !animating);
-
-                        // 타일 배경
-                        if (isClaimed) {
-                            ctx.fillStyle = '#4ecca3';
-                        } else {
-                            ctx.fillStyle = '#2a2a4a';
-                        }
-
-                        // 둥근 사각형 그리기
-                        roundRect(ctx, x, y, tileSize, tileSize, borderRadius);
-                        ctx.fill();
-
-                        // 테두리
-                        ctx.strokeStyle = isClaimed ? 'rgba(78, 204, 163, 0.6)' : 'rgba(255, 255, 255, 0.08)';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-
-                        // 점유 타일 내부 하이라이트
-                        if (isClaimed) {
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-                            roundRect(ctx, x + tileSize * 0.15, y + tileSize * 0.15, tileSize * 0.7, tileSize * 0.7,
-                                borderRadius * 0.7);
-                            ctx.fill();
-                        }
-                    }
-                }
-
-                // 플레이어 그리기
-                const px = playerPos.col * cellSize + cellSize / 2;
-                const py = playerPos.row * cellSize + cellSize / 2;
-                const playerRadius = cellSize * 0.32;
-
-                // 플레이어 그림자
-                ctx.shadowColor = 'rgba(255, 107, 107, 0.6)';
-                ctx.shadowBlur = 14;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 3;
-
-                // 플레이어 원
-                ctx.beginPath();
-                ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
-                ctx.fillStyle = '#ff6b6b';
-                ctx.fill();
-
-                // 하이라이트
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-                ctx.beginPath();
-                ctx.arc(px - playerRadius * 0.25, py - playerRadius * 0.25, playerRadius * 0.35, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-                ctx.fill();
-
-                // 플레이어 테두리
-                ctx.beginPath();
-                ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                // 이동 애니메이션 중이면 애니메이션 위치에 플레이어 그리기
-                if (animating) {
-                    const fromX = animFrom.col * cellSize + cellSize / 2;
-                    const fromY = animFrom.row * cellSize + cellSize / 2;
-                    const toX = animTo.col * cellSize + cellSize / 2;
-                    const toY = animTo.row * cellSize + cellSize / 2;
-                    const currentX = fromX + (toX - fromX) * animProgress;
-                    const currentY = fromY + (toY - fromY) * animProgress;
-
-                    ctx.shadowColor = 'rgba(255, 107, 107, 0.6)';
-                    ctx.shadowBlur = 14;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 3;
-                    ctx.beginPath();
-                    ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.fill();
-                    ctx.shadowColor = 'transparent';
-                    ctx.shadowBlur = 0;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
-                    ctx.beginPath();
-                    ctx.arc(currentX - playerRadius * 0.25, currentY - playerRadius * 0.25, playerRadius * 0.35, 0, Math
-                        .PI * 2);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
+                playerPos = { row: newRow, col: newCol };
+                if (!grid[newRow][newCol]) {
+                    grid[newRow][newCol] = true;
+                    score++;
+                    remaining--;
+                    updateHUD();
+                    if (remaining <= 0) endGame(true);
                 }
             }
+            draw();
+        }
+        requestAnimationFrame(animateStep);
+    }
 
-            function roundRect(ctx, x, y, w, h, r) {
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.lineTo(x + w - r, y);
-                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-                ctx.lineTo(x + w, y + h - r);
-                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                ctx.lineTo(x + r, y + h);
-                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-                ctx.lineTo(x, y + r);
-                ctx.quadraticCurveTo(x, y, x + r, y);
-                ctx.closePath();
+    function endGame(won = false) {
+        if (gameEnded) return;
+        gameEnded = true;
+        gameActive = false;
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        overlayTitle.textContent = won ? '🎉 완주!' : '⏰ 시간 종료!';
+        overlaySubtitle.textContent = won ? '모든 땅을 차지했어요! 대단해요!' : '획득한 땅을 확인하세요!';
+        finalScoreEl.textContent = score;
+        overlay.classList.add('active');
+        updateHUD();
+    }
+
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (!gameActive || gameEnded) return;
+            timeLeft -= 0.1;
+            if (timeLeft <= 0) { timeLeft = 0; updateHUD(); endGame(false); }
+            else updateHUD();
+        }, 100);
+    }
+
+    function getCanvasCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function handleTouchStart(e) {
+        if (!gameActive || gameEnded) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchActive = true;
+        isSwiping = false;
+    }
+
+    function handleTouchMove(e) {
+        if (!touchActive || !gameActive || gameEnded) { e.preventDefault(); return; }
+        e.preventDefault();
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+        if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
+            isSwiping = true;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) tryMove(0, 1); else tryMove(0, -1);
+            } else {
+                if (dy > 0) tryMove(1, 0); else tryMove(-1, 0);
             }
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isSwiping = false;
+        }
+    }
 
-            // === 이동 처리 ===
-            function tryMove(dr, dc) {
-                if (!gameActive || gameEnded || animating) return;
-                const newRow = playerPos.row + dr;
-                const newCol = playerPos.col + dc;
-
-                if (newRow < 0 || newRow >= GRID_SIZE || newCol < 0 || newCol >= GRID_SIZE) return;
-
-                animFrom = { row: playerPos.row, col: playerPos.col };
-                animTo = { row: newRow, col: newCol };
-                animating = true;
-                animProgress = 0;
-
-                // 애니메이션 완료 후 처리
-                const animDuration = 120; // ms
-                const startTime = performance.now();
-
-                function animateStep(now) {
-                    const elapsed = now - startTime;
-                    animProgress = Math.min(1, elapsed / animDuration);
-                    // easing
-                    animProgress = animProgress < 0.5 ?
-                        2 * animProgress * animProgress :
-                        1 - Math.pow(-2 * animProgress + 2, 2) / 2;
-
-                    if (animProgress < 1) {
-                        requestAnimationFrame(animateStep);
-                    } else {
-                        animating = false;
-                        animProgress = 0;
-                        // 위치 업데이트
-                        playerPos = { row: newRow, col: newCol };
-                        // 타일 점유 확인
-                        if (!grid[newRow][newCol]) {
-                            grid[newRow][newCol] = true;
-                            score++;
-                            remaining--;
-                            updateHUD();
-                            if (remaining <= 0) {
-                                endGame(true);
-                            }
-                        }
-                    }
-                    draw();
-                }
-                requestAnimationFrame(animateStep);
+    function handleTouchEnd(e) {
+        if (!touchActive) return;
+        touchActive = false;
+        isSwiping = false;
+        if (!isSwiping && gameActive && !gameEnded && !animating) {
+            const touch = e.changedTouches[0];
+            const coords = getCanvasCoords(touch.clientX, touch.clientY);
+            const col = Math.floor(coords.x / cellSize);
+            const row = Math.floor(coords.y / cellSize);
+            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                const dr = row - playerPos.row;
+                const dc = col - playerPos.col;
+                if (Math.abs(dr) + Math.abs(dc) === 1) tryMove(dr, dc);
             }
+        }
+    }
 
-            // === 게임 종료 ===
-            function endGame(won = false) {
-                if (gameEnded) return;
-                gameEnded = true;
-                gameActive = false;
-                if (timerInterval) {
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                }
-                overlayTitle.textContent = won ? '🎉 완주!' : '⏰ 시간 종료!';
-                overlaySubtitle.textContent = won ?
-                    '모든 땅을 차지했어요! 대단해요!' :
-                    '획득한 땅을 확인하세요!';
-                finalScoreEl.textContent = score;
-                overlay.classList.add('active');
-                updateHUD();
+    function handleTouchCancel(e) { touchActive = false; isSwiping = false; }
+    function handleMouseDown(e) {
+        if (!gameActive || gameEnded) return;
+        touchStartX = e.clientX;
+        touchStartY = e.clientY;
+        touchActive = true;
+        isSwiping = false;
+    }
+    function handleMouseMove(e) {
+        if (!touchActive || !gameActive || gameEnded) return;
+        const dx = e.clientX - touchStartX;
+        const dy = e.clientY - touchStartY;
+        if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
+            isSwiping = true;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) tryMove(0, 1); else tryMove(0, -1);
+            } else {
+                if (dy > 0) tryMove(1, 0); else tryMove(-1, 0);
             }
-
-            // === 타이머 ===
-            function startTimer() {
-                if (timerInterval) clearInterval(timerInterval);
-                timerInterval = setInterval(() => {
-                    if (!gameActive || gameEnded) return;
-                    timeLeft -= 0.1;
-                    if (timeLeft <= 0) {
-                        timeLeft = 0;
-                        updateHUD();
-                        endGame(false);
-                    } else {
-                        updateHUD();
-                    }
-                }, 100);
+            touchStartX = e.clientX;
+            touchStartY = e.clientY;
+            isSwiping = false;
+        }
+    }
+    function handleMouseUp(e) {
+        if (!touchActive) return;
+        touchActive = false;
+        isSwiping = false;
+        if (gameActive && !gameEnded && !animating) {
+            const coords = getCanvasCoords(e.clientX, e.clientY);
+            const col = Math.floor(coords.x / cellSize);
+            const row = Math.floor(coords.y / cellSize);
+            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                const dr = row - playerPos.row;
+                const dc = col - playerPos.col;
+                if (Math.abs(dr) + Math.abs(dc) === 1) tryMove(dr, dc);
             }
+        }
+    }
+    function handleMouseLeave(e) { touchActive = false; isSwiping = false; }
 
-            // === 입력 처리 ===
-            function getCanvasCoords(clientX, clientY) {
-                const rect = canvas.getBoundingClientRect();
-                return {
-                    x: clientX - rect.left,
-                    y: clientY - rect.top
-                };
-            }
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            function handleTouchStart(e) {
-                if (!gameActive || gameEnded) return;
-                e.preventDefault();
-                const touch = e.touches[0];
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
-                touchActive = true;
-                isSwiping = false;
-            }
+    document.addEventListener('keydown', (e) => {
+        if (!gameActive || gameEnded || animating) return;
+        switch (e.key) {
+            case 'ArrowUp': case 'w': case 'W': e.preventDefault(); tryMove(-1, 0); break;
+            case 'ArrowDown': case 's': case 'S': e.preventDefault(); tryMove(1, 0); break;
+            case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); tryMove(0, -1); break;
+            case 'ArrowRight': case 'd': case 'D': e.preventDefault(); tryMove(0, 1); break;
+            case 'r': case 'R': e.preventDefault(); restartGame(); break;
+        }
+    });
 
-            function handleTouchMove(e) {
-                if (!touchActive || !gameActive || gameEnded) {
-                    e.preventDefault();
-                    return;
-                }
-                e.preventDefault();
-                const touch = e.touches[0];
-                const dx = touch.clientX - touchStartX;
-                const dy = touch.clientY - touchStartY;
+    btnRestart.addEventListener('click', (e) => { e.preventDefault(); restartGame(); });
+    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); restartGame(); });
 
-                if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
-                    isSwiping = true;
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        if (dx > 0) {
-                            tryMove(0, 1); // 오른쪽
-                        } else {
-                            tryMove(0, -1); // 왼쪽
-                        }
-                    } else {
-                        if (dy > 0) {
-                            tryMove(1, 0); // 아래
-                        } else {
-                            tryMove(-1, 0); // 위
-                        }
-                    }
-                    // 기준점 리셋 (연속 스와이프 허용)
-                    touchStartX = touch.clientX;
-                    touchStartY = touch.clientY;
-                    isSwiping = false;
-                }
-            }
+    function restartGame() {
+        initGrid();
+        startTimer();
+        draw();
+    }
 
-            function handleTouchEnd(e) {
-                if (!touchActive) return;
-                touchActive = false;
-                isSwiping = false;
-                // 탭 처리 (짧은 터치로 이동)
-                if (!isSwiping && gameActive && !gameEnded && !animating) {
-                    const touch = e.changedTouches[0];
-                    const coords = getCanvasCoords(touch.clientX, touch.clientY);
-                    const col = Math.floor(coords.x / cellSize);
-                    const row = Math.floor(coords.y / cellSize);
-                    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-                        const dr = row - playerPos.row;
-                        const dc = col - playerPos.col;
-                        if (Math.abs(dr) + Math.abs(dc) === 1) {
-                            tryMove(dr, dc);
-                        }
-                    }
-                }
-            }
+    window.addEventListener('resize', () => { resizeCanvas(); draw(); });
+    window.addEventListener('orientationchange', () => { setTimeout(() => { resizeCanvas(); draw(); }, 300); });
 
-            function handleTouchCancel(e) {
-                touchActive = false;
-                isSwiping = false;
-            }
+    function startGame() {
+        resizeCanvas();
+        initGrid();
+        startTimer();
+        draw();
+    }
 
-            // 마우스 이벤트 (데스크톱)
-            function handleMouseDown(e) {
-                if (!gameActive || gameEnded) return;
-                touchStartX = e.clientX;
-                touchStartY = e.clientY;
-                touchActive = true;
-                isSwiping = false;
-            }
-
-            function handleMouseMove(e) {
-                if (!touchActive || !gameActive || gameEnded) return;
-                const dx = e.clientX - touchStartX;
-                const dy = e.clientY - touchStartY;
-                if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
-                    isSwiping = true;
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        if (dx > 0) {
-                            tryMove(0, 1);
-                        } else {
-                            tryMove(0, -1);
-                        }
-                    } else {
-                        if (dy > 0) {
-                            tryMove(1, 0);
-                        } else {
-                            tryMove(-1, 0);
-                        }
-                    }
-                    touchStartX = e.clientX;
-                    touchStartY = e.clientY;
-                    isSwiping = false;
-                }
-            }
-
-            function handleMouseUp(e) {
-                if (!touchActive) return;
-                touchActive = false;
-                isSwiping = false;
-                if (gameActive && !gameEnded && !animating) {
-                    const coords = getCanvasCoords(e.clientX, e.clientY);
-                    const col = Math.floor(coords.x / cellSize);
-                    const row = Math.floor(coords.y / cellSize);
-                    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-                        const dr = row - playerPos.row;
-                        const dc = col - playerPos.col;
-                        if (Math.abs(dr) + Math.abs(dc) === 1) {
-                            tryMove(dr, dc);
-                        }
-                    }
-                }
-            }
-
-            function handleMouseLeave(e) {
-                touchActive = false;
-                isSwiping = false;
-            }
-
-            // === 이벤트 등록 ===
-            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-            canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-
-            canvas.addEventListener('mousedown', handleMouseDown);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseup', handleMouseUp);
-            canvas.addEventListener('mouseleave', handleMouseLeave);
-
-            // 컨텍스트 메뉴 방지
-            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
-            // 키보드 지원 (데스크톱)
-            document.addEventListener('keydown', (e) => {
-                if (!gameActive || gameEnded || animating) return;
-                switch (e.key) {
-                    case 'ArrowUp':
-                    case 'w':
-                    case 'W':
-                        e.preventDefault();
-                        tryMove(-1, 0);
-                        break;
-                    case 'ArrowDown':
-                    case 's':
-                    case 'S':
-                        e.preventDefault();
-                        tryMove(1, 0);
-                        break;
-                    case 'ArrowLeft':
-                    case 'a':
-                    case 'A':
-                        e.preventDefault();
-                        tryMove(0, -1);
-                        break;
-                    case 'ArrowRight':
-                    case 'd':
-                    case 'D':
-                        e.preventDefault();
-                        tryMove(0, 1);
-                        break;
-                    case 'r':
-                    case 'R':
-                        e.preventDefault();
-                        restartGame();
-                        break;
-                }
-            });
-
-            // 재시작 버튼
-            btnRestart.addEventListener('click', (e) => {
-                e.preventDefault();
-                restartGame();
-            });
-            btnRestart.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                restartGame();
-            });
-
-            function restartGame() {
-                initGrid();
-                startTimer();
-                draw();
-            }
-
-            // === 창 크기 조정 ===
-            window.addEventListener('resize', () => {
-                resizeCanvas();
-                draw();
-            });
-
-            window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    resizeCanvas();
-                    draw();
-                }, 300);
-            });
-
-            // === 게임 시작 ===
-            function startGame() {
-                resizeCanvas();
-                initGrid();
-                startTimer();
-                draw();
-            }
-
-            // 초기화
-            startGame();
-
-            // 배터리 세이버: 페이지 숨김 시 타이머 일시 정지
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden && gameActive && !gameEnded) {
-                    // 타이머는 계속 진행되지만, 실제 게임 시간에는 영향 없음 (단순화)
-                    // 선택적: 게임 일시 정지
-                }
-            });
-
-            console.log('🏆 땅따먹기 게임 로드 완료!');
-            console.log('🎮 조작: 스와이프 (터치) 또는 방향키 (키보드)');
-            console.log('📱 iPhone에서도 완벽하게 작동합니다!');
-        })();
-    </script>
+    startGame();
+    console.log('🏆 땅따먹기 게임 로드 완료!');
+})();
+</script>
 </body>
 </html>
