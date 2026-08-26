@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v7.4</title>
+    <title>땅따먹기 v8.0</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v7.4</div>
+            <div id="version-badge">v8.0</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -83,7 +83,7 @@
         </div>
         <button id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 기지 내부 터치 → 드래그 방향 → 발사 (최대 3회, 기지 복귀 시 영역 획득)</div>
+    <div id="instructions">👆 내 영역 아무 곳이나 터치하여 공 배치 → 드래그로 방향 → 발사 (최대 3회)</div>
 </div>
 <script>
 (function() {
@@ -133,7 +133,7 @@
     let hasLeftBase = false;
     let gameOver = false;
     let turnInProgress = false;
-    let placingStone = false;
+    let canPlaceStone = true;  // 공 배치 가능 여부
     let failed = false;
 
     let ball = { x: BASE1_X, y: BASE1_Y, vx: 0, vy: 0, moving: false };
@@ -185,7 +185,7 @@
         shotsFired = 0;
         hasLeftBase = false;
         turnInProgress = true;
-        placingStone = true;  // 항상 배치 단계로 시작
+        canPlaceStone = true;
         failed = false;
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
@@ -218,7 +218,7 @@
         p2ScoreEl.textContent = Math.round(p2Count / TOTAL_AREA * 100) + '%';
         const playerName = currentPlayer === P1 ? '🟢 P1' : '🔴 P2';
         let status = '';
-        if (placingStone) status = ' 돌 배치 중';
+        if (canPlaceStone) status = ' 공 배치: 내 영역 터치';
         else if (failed) status = ' 실패!';
         else if (isAiming) status = ' 방향 설정 중';
         else status = ` 남은 발사: ${shotsLeft}`;
@@ -352,7 +352,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        if (isAiming && !ball.moving && !gameOver && turnInProgress && !placingStone) {
+        if (isAiming && !ball.moving && !gameOver && turnInProgress && !canPlaceStone) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
             const len = Math.sqrt(dx*dx + dy*dy);
@@ -369,20 +369,19 @@
             }
         }
 
-        if (placingStone && !ball.moving && !gameOver) {
-            const baseScreenX = BOARD_W/2 * cellW;
-            const baseScreenY = (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH;
-            const baseScreenSize = BASE_SIZE * scaleFactor;
-            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([8, 8]);
-            ctx.strokeRect(baseScreenX - baseScreenSize/2, baseScreenY - baseScreenSize/2, baseScreenSize, baseScreenSize);
+        if (canPlaceStone && !ball.moving && !gameOver) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(ballScreenX, ballScreenY, BALL_RADIUS * 4 * scaleFactor, 0, Math.PI*2);
+            ctx.stroke();
             ctx.setLineDash([]);
         }
     }
 
     function launchBall() {
-        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed || !isAiming) return;
+        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || canPlaceStone || failed || !isAiming) return;
         const power = gaugeValueCurrent / POWER_MAX;
         const speed = power * MAX_SPEED;
         ball.vx = Math.cos(aimAngle) * speed;
@@ -450,6 +449,13 @@
         return Math.abs(x - baseX) <= BASE_SIZE/2 && Math.abs(y - baseY) <= BASE_SIZE/2;
     }
 
+    function isInsideMyTerritory(x, y) {
+        const px = Math.floor(x);
+        const py = Math.floor(y);
+        if (px < 0 || px >= BOARD_W || py < 0 || py >= BOARD_H) return false;
+        return territoryMap[py * BOARD_W + px] === currentPlayer;
+    }
+
     function checkFailure(x1, y1, x2, y2) {
         const safeDistSq = SAFE_DIST_FROM_START * SAFE_DIST_FROM_START;
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
@@ -457,7 +463,7 @@
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideCurrentBase(px, py)) continue;
+            if (isInsideMyTerritory(px, py)) continue;
             const dx0 = px - x1, dy0 = py - y1;
             if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
             const idx = py * BOARD_W + px;
@@ -473,7 +479,7 @@
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideCurrentBase(px, py)) continue;
+            if (isInsideMyTerritory(px, py)) continue;
             for (let dy = -BALL_RADIUS+2; dy <= BALL_RADIUS-2; dy++) {
                 for (let dx = -BALL_RADIUS+2; dx <= BALL_RADIUS-2; dx++) {
                     const nx = px + dx;
@@ -504,17 +510,18 @@
     }
 
     function checkEndOfShot() {
-        if (hasLeftBase && isInsideCurrentBase(ball.x, ball.y)) {
+        if (hasLeftBase && isInsideMyTerritory(ball.x, ball.y)) {
             acquireTerritory();
             showSuccessToast();
             endTurn(true);
         } else if (shotsLeft <= 0) {
             endTurn(false);
         } else {
-            if (!hasLeftBase && !isInsideCurrentBase(ball.x, ball.y)) {
+            if (!hasLeftBase && !isInsideMyTerritory(ball.x, ball.y)) {
                 hasLeftBase = true;
             }
             turnInProgress = true;
+            canPlaceStone = false;
             isAiming = false;
             btnFire.disabled = false;
             updateHUD();
@@ -634,21 +641,19 @@
         const touch = e.touches[0];
         const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
 
-        if (placingStone) {
-            const baseX = BOARD_W/2;
-            const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-            if (Math.abs(x-baseX) <= BASE_SIZE/2 - BALL_RADIUS && Math.abs(y-baseY) <= BASE_SIZE/2 - BALL_RADIUS) {
+        // 공 배치 모드: 내 영역 아무 곳이나 터치
+        if (canPlaceStone) {
+            if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
                 ball.y = y;
-                placingStone = false;
-                updateHUD();
                 draw();
-                btnFire.disabled = false;
+                updateHUD();
             }
             return;
         }
 
-        if (turnInProgress && !ball.moving && !failed) {
+        // 발사 모드: 공 근처에서 드래그
+        if (turnInProgress && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
             if (distToBall < BALL_RADIUS * 3) {
                 isAiming = true;
@@ -681,20 +686,18 @@
     function handleMouseDown(e) {
         if (gameOver || ball.moving || !turnInProgress) return;
         const { x, y } = getBoardCoords(e.clientX, e.clientY);
-        if (placingStone) {
-            const baseX = BOARD_W/2;
-            const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-            if (Math.abs(x-baseX) <= BASE_SIZE/2 - BALL_RADIUS && Math.abs(y-baseY) <= BASE_SIZE/2 - BALL_RADIUS) {
+
+        if (canPlaceStone) {
+            if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
                 ball.y = y;
-                placingStone = false;
-                updateHUD();
                 draw();
-                btnFire.disabled = false;
+                updateHUD();
             }
             return;
         }
-        if (turnInProgress && !ball.moving && !failed) {
+
+        if (turnInProgress && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
             if (distToBall < BALL_RADIUS * 3) {
                 isAiming = true;
@@ -732,13 +735,13 @@
     canvas.addEventListener('mouseup', handleMouseUp);
 
     btnFire.addEventListener('click', () => {
-        if (isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+        if (isAiming && !ball.moving && turnInProgress && !canPlaceStone && !failed) {
             launchBall();
         }
     });
     btnFire.addEventListener('touchend', (e) => {
         e.preventDefault();
-        if (isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+        if (isAiming && !ball.moving && turnInProgress && !canPlaceStone && !failed) {
             launchBall();
         }
     });
@@ -751,7 +754,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v7.4 - 2인용 대결 모드');
+    console.log('🏆 땅따먹기 v8.0 - 내 영역 어디서든 발사');
 })();
 </script>
 </body>
