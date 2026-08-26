@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v6.1</title>
+    <title>땅따먹기 v6.3</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v6.1</div>
+            <div id="version-badge">v6.3</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -104,19 +104,19 @@
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
 
-    // 게임 설정
-    const BOARD_W = 1800;
-    const BOARD_H = 1100;
+    // ===== 게임 설정 =====
+    const BOARD_W = 2000;
+    const BOARD_H = 1200;
+    const BASE_RADIUS = 124;  // 전체 맵의 약 2% (π×124² / 2,400,000 ≈ 2.0%)
     const BALL_RADIUS = 14;
-    const BASE_RADIUS = 112;
     const WALL_THICKNESS = 8;
     const FRICTION = 0.985;
     const MAX_SPEED = 22;
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
-    const WIN_THRESHOLD = 0.01;
+    const WIN_THRESHOLD = 0.01;  // 상대 확장 영역(기지 제외)이 1% 미만이면 승리
     const POWER_MAX = 10;
-    const SAFE_DIST_FROM_START = BALL_RADIUS * 3;  // 출발점 주변 이 거리 내 벽은 무시
+    const SAFE_DIST_FROM_START = BALL_RADIUS * 3;
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -134,7 +134,7 @@
     let placingStone = false;
     let failed = false;
 
-    let ball = { x: BOARD_W/2, y: 180, vx: 0, vy: 0, moving: false };
+    let ball = { x: BOARD_W/2, y: 200, vx: 0, vy: 0, moving: false };
 
     let isAiming = false;
     let aimStartX = 0, aimStartY = 0;
@@ -150,12 +150,18 @@
     let scaleX = 1, scaleY = 1;
     let animId = null;
 
+    // 기지 중심 좌표 저장
+    const BASE1_X = BOARD_W/2;
+    const BASE1_Y = 200;
+    const BASE2_X = BOARD_W/2;
+    const BASE2_Y = BOARD_H - 200;
+
     function initTerritory() {
         territoryMap = new Uint8Array(BOARD_W * BOARD_H);
         wallMap = new Uint8Array(BOARD_W * BOARD_H);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
-        fillCircleToMap(territoryMap, BOARD_W/2, 180, BASE_RADIUS, P1);
-        fillCircleToMap(territoryMap, BOARD_W/2, BOARD_H-180, BASE_RADIUS, P2);
+        fillCircleToMap(territoryMap, BASE1_X, BASE1_Y, BASE_RADIUS, P1);
+        fillCircleToMap(territoryMap, BASE2_X, BASE2_Y, BASE_RADIUS, P2);
     }
 
     function fillCircleToMap(map, cx, cy, radius, owner) {
@@ -175,7 +181,7 @@
         ball.moving = false;
         ball.vx = 0; ball.vy = 0;
         const baseX = BOARD_W/2;
-        const baseY = currentPlayer === P1 ? 180 : BOARD_H-180;
+        const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         ball.x = baseX;
         ball.y = baseY;
         shotsLeft = MAX_SHOTS_PER_TURN;
@@ -325,8 +331,8 @@
             }
         }
 
-        drawBase(offCtx, BOARD_W/2, 180, BASE_RADIUS, '나', P1);
-        drawBase(offCtx, BOARD_W/2, BOARD_H-180, BASE_RADIUS, '컴', P2);
+        drawBase(offCtx, BASE1_X, BASE1_Y, BASE_RADIUS, '나', P1);
+        drawBase(offCtx, BASE2_X, BASE2_Y, BASE_RADIUS, '컴', P2);
 
         offCtx.shadowColor = 'rgba(255,255,255,0.7)';
         offCtx.shadowBlur = 16;
@@ -366,7 +372,7 @@
             offCtx.lineWidth = 4;
             offCtx.setLineDash([10, 10]);
             offCtx.beginPath();
-            offCtx.arc(BOARD_W/2, currentPlayer === P1 ? 180 : BOARD_H-180, BASE_RADIUS, 0, Math.PI*2);
+            offCtx.arc(BOARD_W/2, currentPlayer === P1 ? BASE1_Y : BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
             offCtx.stroke();
             offCtx.setLineDash([]);
         }
@@ -438,7 +444,6 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        // 실패 검사: 첫 발사 이후(shotsFired > 1)에만 검사
         if (shotsFired > 1) {
             if (checkFailure(prevX, prevY, ball.x, ball.y)) {
                 ball.moving = false;
@@ -457,31 +462,26 @@
 
     function isInsideCurrentBase(x, y) {
         const baseX = BOARD_W/2;
-        const baseY = currentPlayer === P1 ? 180 : BOARD_H-180;
+        const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         const dx = x - baseX, dy = y - baseY;
         return (dx*dx + dy*dy) <= BASE_RADIUS * BASE_RADIUS;
     }
 
     function checkFailure(x1, y1, x2, y2) {
-        // 시작점으로부터 안전 거리 내의 벽은 무시 (출발 지점 근처 벽 때문에 실패 방지)
         const safeDistSq = SAFE_DIST_FROM_START * SAFE_DIST_FROM_START;
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
         for (let i = 1; i < steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            // 기지 내부는 통과
             if (isInsideCurrentBase(px, py)) continue;
-            // 출발점 근처는 벽 검사 제외
             const dx0 = px - x1, dy0 = py - y1;
             if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
 
             const idx = py * BOARD_W + px;
-            // 내 영역 진입 검사
             if (territoryMap[idx] === currentPlayer) {
                 return true;
             }
-            // 벽 교차 검사
             if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
                 return true;
             }
@@ -526,7 +526,7 @@
 
     function checkEndOfShot() {
         const baseX = BOARD_W/2;
-        const baseY = currentPlayer === P1 ? 180 : BOARD_H-180;
+        const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         const distToBase = Math.sqrt((ball.x-baseX)*(ball.x-baseX) + (ball.y-baseY)*(ball.y-baseY));
 
         if (hasLeftBase && distToBase <= BASE_RADIUS) {
@@ -551,13 +551,16 @@
     }
 
     function acquireTerritory() {
+        // 1. 임시 벽을 영구 벽으로 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
+
+        // 2. flood fill: 현재 플레이어 기지에서 도달 가능한 영역 표시
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [];
-        const startX = Math.floor(BOARD_W/2);
-        const startY = currentPlayer === P1 ? 180 : BOARD_H-180;
+        const startX = Math.floor(BASE1_X); // 기지 중심
+        const startY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         const startIdx = startY * BOARD_W + startX;
         visited[startIdx] = 1;
         queue.push(startIdx);
@@ -580,11 +583,23 @@
             }
         }
 
+        // 3. 상대 기지 영역은 보호 (상대 기지 픽셀은 빼앗기지 않음)
+        const opponentBaseX = currentPlayer === P1 ? BASE2_X : BASE1_X;
+        const opponentBaseY = currentPlayer === P1 ? BASE2_Y : BASE1_Y;
+        const opponentBaseR2 = BASE_RADIUS * BASE_RADIUS;
+
+        // 4. visited하지 않은 셀을 currentPlayer로 변경 (상대 기지 제외)
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i]) {
+                const x = i % BOARD_W;
+                const y = Math.floor(i / BOARD_W);
+                // 상대 기지 내부면 유지
+                const dx = x - opponentBaseX, dy = y - opponentBaseY;
+                if (dx*dx + dy*dy <= opponentBaseR2) continue;
                 territoryMap[i] = currentPlayer;
             }
         }
+
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
     }
 
@@ -601,19 +616,27 @@
         btnFire.disabled = true;
         updateHUD();
 
+        // 승리 판정: 상대 기지 제외 확장 영역이 1% 미만이면 승리
         let p1Count = 0, p2Count = 0;
         for (let i = 0; i < territoryMap.length; i++) {
             if (territoryMap[i] === P1) p1Count++;
             else if (territoryMap[i] === P2) p2Count++;
         }
-        const total = BOARD_W * BOARD_H;
-        if (p1Count/total < WIN_THRESHOLD) {
+
+        // 기지 면적 계산 (π * R²)
+        const baseArea = Math.PI * BASE_RADIUS * BASE_RADIUS;
+        const totalArea = BOARD_W * BOARD_H;
+
+        const p1Extended = p1Count - baseArea; // 자신 기지 제외
+        const p2Extended = p2Count - baseArea;
+
+        if (p1Extended / totalArea < WIN_THRESHOLD) {
             gameOver = true;
-            showGameOver(false, '내 영역이 1% 미만!');
+            showGameOver(false, '내 확장 영역이 1% 미만!');
             return;
-        } else if (p2Count/total < WIN_THRESHOLD) {
+        } else if (p2Extended / totalArea < WIN_THRESHOLD) {
             gameOver = true;
-            showGameOver(true, '컴퓨터 영역이 1% 미만!');
+            showGameOver(true, '컴퓨터 확장 영역이 1% 미만!');
             return;
         }
 
@@ -628,12 +651,6 @@
 
     function computerTurn() {
         if (gameOver || currentPlayer !== P2 || !turnInProgress) return;
-        const baseX = BOARD_W/2;
-        const baseY = BOARD_H-180;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = Math.random() * (BASE_RADIUS - BALL_RADIUS);
-        ball.x = baseX + Math.cos(angle) * dist;
-        ball.y = baseY + Math.sin(angle) * dist;
         placingStone = false;
         draw();
 
@@ -686,7 +703,7 @@
 
         if (placingStone && currentPlayer === P1) {
             const baseX = BOARD_W/2;
-            const baseY = 180;
+            const baseY = BASE1_Y;
             const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
             if (dist <= BASE_RADIUS - BALL_RADIUS) {
                 ball.x = x;
@@ -734,7 +751,7 @@
         const { x, y } = getBoardCoords(e.clientX, e.clientY);
         if (placingStone && currentPlayer === P1) {
             const baseX = BOARD_W/2;
-            const baseY = 180;
+            const baseY = BASE1_Y;
             const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
             if (dist <= BASE_RADIUS - BALL_RADIUS) {
                 ball.x = x;
@@ -803,7 +820,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v6.1 - 두 번째 발사 실패 수정');
+    console.log('🏆 땅따먹기 v6.3 - 맵 확대 & 기지 보호');
 })();
 </script>
 </body>
