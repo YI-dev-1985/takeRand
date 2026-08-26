@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v6.5</title>
+    <title>땅따먹기 v6.7</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -17,13 +17,13 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
         html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
-        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:900px; padding:max(4px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); gap:4px; }
-        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:10px; padding:6px 10px; }
-        .hud-side { display:flex; align-items:center; gap:6px; }
-        .hud-name { font-weight:700; font-size:13px; }
-        .hud-score { font-size:17px; font-weight:900; min-width:40px; text-align:center; }
-        #version-badge { font-size:10px; color:#aaa; background:#222; padding:2px 6px; border-radius:6px; }
-        #turn-info { font-size:12px; font-weight:600; color:#ddd; }
+        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:800px; padding:max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap:6px; }
+        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:10px; padding:8px 12px; }
+        .hud-side { display:flex; align-items:center; gap:8px; }
+        .hud-name { font-weight:700; font-size:14px; }
+        .hud-score { font-size:18px; font-weight:900; min-width:40px; text-align:center; }
+        #version-badge { font-size:10px; color:#aaa; background:#222; padding:2px 8px; border-radius:8px; }
+        #turn-info { font-size:13px; font-weight:600; color:#ddd; }
         #board-wrapper { flex:1; width:100%; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; }
         canvas { border-radius:10px; background:#1a1a2e; box-shadow:0 4px 16px rgba(0,0,0,0.8); width:100%; height:100%; object-fit:contain; touch-action:none; }
         #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); border-radius:10px; z-index:10; opacity:0; pointer-events:none; transition:0.3s; }
@@ -32,15 +32,15 @@
         #overlay-desc { color:#ccc; margin-bottom:10px; text-align:center; padding:0 12px; font-size:14px; }
         #btn-restart { padding:10px 28px; font-size:16px; font-weight:700; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
-        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:4px 8px; background:var(--panel); border-radius:10px; }
+        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; }
         #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; }
-        #gauge-bar-bg { flex:1; height:12px; background:#333; border-radius:6px; overflow:hidden; }
-        #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:6px; transition: width 0.05s linear; }
-        #gauge-value { font-size:14px; font-weight:900; color:#fff; min-width:35px; text-align:center; }
-        #btn-fire { padding:8px 22px; font-size:17px; font-weight:900; border:none; border-radius:25px; background:var(--button); color:#000; cursor:pointer; }
+        #gauge-bar-bg { flex:1; height:14px; background:#333; border-radius:7px; overflow:hidden; }
+        #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:7px; }
+        #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
+        #btn-fire { padding:8px 24px; font-size:18px; font-weight:900; border:none; border-radius:25px; background:var(--button); color:#000; cursor:pointer; }
         #btn-fire:active { transform:scale(0.95); }
         #btn-fire:disabled { background:#555; color:#999; }
-        #instructions { color:#666; font-size:10px; text-align:center; }
+        #instructions { color:#777; font-size:10px; text-align:center; }
     </style>
 </head>
 <body>
@@ -55,7 +55,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v6.5</div>
+            <div id="version-badge">v6.7</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -98,25 +98,25 @@
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
 
-    const BOARD_W = 2400;
-    const BOARD_H = 1400;
-    const BASE_RADIUS = 148;
-    const BALL_RADIUS = 12;
-    const WALL_THICKNESS = 6;
+    // ===== 게임 설정 (최적화된 크기) =====
+    const BOARD_W = 1200;
+    const BOARD_H = 700;
+    const BASE_RADIUS = 70;  // 1200×700에서 약 2% (π×70² / 840,000 ≈ 1.83%)
+    const BALL_RADIUS = 8;
+    const WALL_THICKNESS = 4;
     const FRICTION = 0.985;
-    const MAX_SPEED = 22;
+    const MAX_SPEED = 18;
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
-    const BASE_LOSS_RATIO = 0.5;  // 기지 50% 이상 빼앗기면 패배
+    const BASE_LOSS_RATIO = 0.5;
     const POWER_MAX = 10;
     const SAFE_DIST_FROM_START = BALL_RADIUS * 3;
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    const BASE1_X = BOARD_W/2, BASE1_Y = 250;
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 250;
-    const BASE_AREA = Math.PI * BASE_RADIUS * BASE_RADIUS;
+    const BASE1_X = BOARD_W/2, BASE1_Y = 120;
+    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 120;
     const TOTAL_AREA = BOARD_W * BOARD_H;
 
     let territoryMap = null;
@@ -280,13 +280,16 @@
     function draw() {
         if (!territoryMap) return;
         ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvasW, canvasH);
 
-        const offscreen = document.createElement('canvas');
-        offscreen.width = BOARD_W;
-        offscreen.height = BOARD_H;
-        const offCtx = offscreen.getContext('2d');
+        // 배경 (그리드 없이 단순하게)
+        // 영역 그리기 (픽셀 단위로 직접)
+        const cellW = canvasW / BOARD_W;
+        const cellH = canvasH / BOARD_H;
 
-        const imgData = offCtx.createImageData(BOARD_W, BOARD_H);
+        // 영역 맵을 이미지 데이터로 변환하여 그리기
+        const imgData = ctx.createImageData(BOARD_W, BOARD_H);
         for (let i = 0; i < territoryMap.length; i++) {
             const val = territoryMap[i];
             if (val === P1) {
@@ -306,89 +309,93 @@
                 imgData.data[i*4+3] = 255;
             }
         }
-        offCtx.putImageData(imgData, 0, 0);
 
+        // 임시 캔버스에 이미지 데이터 그리기
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = BOARD_W;
+        tempCanvas.height = BOARD_H;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(imgData, 0, 0);
+
+        // 벽 그리기 (임시 캔버스에)
         for (let i = 0; i < wallMap.length; i++) {
-            if (wallMap[i] === 1) {
+            if (wallMap[i] === 1 || tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
                 const y = Math.floor(i / BOARD_W);
-                offCtx.fillStyle = '#8888aa';
-                offCtx.fillRect(x, y, 1, 1);
-            }
-        }
-        for (let i = 0; i < tempWallMap.length; i++) {
-            if (tempWallMap[i] === 1) {
-                const x = i % BOARD_W;
-                const y = Math.floor(i / BOARD_W);
-                offCtx.fillStyle = '#aaaacc';
-                offCtx.fillRect(x, y, 1, 1);
+                tempCtx.fillStyle = '#aaaacc';
+                tempCtx.fillRect(x, y, 1, 1);
             }
         }
 
-        drawBase(offCtx, BASE1_X, BASE1_Y, BASE_RADIUS, '나', P1);
-        drawBase(offCtx, BASE2_X, BASE2_Y, BASE_RADIUS, '컴', P2);
+        // 기지 그리기
+        // P1 기지
+        tempCtx.fillStyle = 'rgba(78, 204, 163, 0.6)';
+        tempCtx.beginPath();
+        tempCtx.arc(BASE1_X, BASE1_Y, BASE_RADIUS, 0, Math.PI*2);
+        tempCtx.fill();
+        tempCtx.strokeStyle = '#4ecca3';
+        tempCtx.lineWidth = 4;
+        tempCtx.stroke();
+        tempCtx.fillStyle = '#fff';
+        tempCtx.font = 'bold 36px -apple-system, sans-serif';
+        tempCtx.textAlign = 'center';
+        tempCtx.textBaseline = 'middle';
+        tempCtx.fillText('나', BASE1_X, BASE1_Y);
 
-        offCtx.shadowColor = 'rgba(255,255,255,0.7)';
-        offCtx.shadowBlur = 14;
-        offCtx.beginPath();
-        offCtx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2);
-        offCtx.fillStyle = currentPlayer === P1 ? '#4ecca3' : '#ff6b6b';
-        offCtx.fill();
-        offCtx.shadowBlur = 0;
-        offCtx.strokeStyle = '#fff';
-        offCtx.lineWidth = 2.5;
-        offCtx.stroke();
-        offCtx.beginPath();
-        offCtx.arc(ball.x - BALL_RADIUS*0.3, ball.y - BALL_RADIUS*0.3, BALL_RADIUS*0.3, 0, Math.PI*2);
-        offCtx.fillStyle = 'rgba(255,255,255,0.6)';
-        offCtx.fill();
+        // P2 기지
+        tempCtx.fillStyle = 'rgba(255, 107, 107, 0.6)';
+        tempCtx.beginPath();
+        tempCtx.arc(BASE2_X, BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
+        tempCtx.fill();
+        tempCtx.strokeStyle = '#ff6b6b';
+        tempCtx.lineWidth = 4;
+        tempCtx.stroke();
+        tempCtx.fillStyle = '#fff';
+        tempCtx.fillText('컴', BASE2_X, BASE2_Y);
 
+        // 돌 그리기
+        tempCtx.shadowColor = 'rgba(255,255,255,0.9)';
+        tempCtx.shadowBlur = 10;
+        tempCtx.beginPath();
+        tempCtx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2);
+        tempCtx.fillStyle = '#ffffff';
+        tempCtx.fill();
+        tempCtx.shadowBlur = 0;
+        tempCtx.strokeStyle = '#000';
+        tempCtx.lineWidth = 2;
+        tempCtx.stroke();
+
+        // 조준선
         if (isAiming && !ball.moving && !gameOver && turnInProgress && !placingStone) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
             const len = Math.sqrt(dx*dx + dy*dy);
             if (len > 10) {
                 aimAngle = Math.atan2(dy, dx);
-                const guideLen = 80;
-                offCtx.strokeStyle = 'rgba(255,255,255,0.7)';
-                offCtx.lineWidth = 3;
-                offCtx.setLineDash([8, 8]);
-                offCtx.beginPath();
-                offCtx.moveTo(ball.x, ball.y);
-                offCtx.lineTo(ball.x + Math.cos(aimAngle)*guideLen, ball.y + Math.sin(aimAngle)*guideLen);
-                offCtx.stroke();
-                offCtx.setLineDash([]);
+                tempCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+                tempCtx.lineWidth = 2;
+                tempCtx.setLineDash([6, 6]);
+                tempCtx.beginPath();
+                tempCtx.moveTo(ball.x, ball.y);
+                tempCtx.lineTo(ball.x + Math.cos(aimAngle)*60, ball.y + Math.sin(aimAngle)*60);
+                tempCtx.stroke();
+                tempCtx.setLineDash([]);
             }
         }
 
+        // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
-            offCtx.strokeStyle = 'rgba(255,255,255,0.8)';
-            offCtx.lineWidth = 3;
-            offCtx.setLineDash([10, 10]);
-            offCtx.beginPath();
-            offCtx.arc(BOARD_W/2, currentPlayer === P1 ? BASE1_Y : BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
-            offCtx.stroke();
-            offCtx.setLineDash([]);
+            tempCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+            tempCtx.lineWidth = 3;
+            tempCtx.setLineDash([8, 8]);
+            tempCtx.beginPath();
+            tempCtx.arc(BOARD_W/2, currentPlayer === P1 ? BASE1_Y : BASE2_Y, BASE_RADIUS, 0, Math.PI*2);
+            tempCtx.stroke();
+            tempCtx.setLineDash([]);
         }
 
-        ctx.drawImage(offscreen, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
-    }
-
-    function drawBase(ctx, x, y, radius, label, owner) {
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${radius*0.7}px -apple-system, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, x, y);
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI*2);
-        ctx.stroke();
+        // 메인 캔버스에 그리기
+        ctx.drawImage(tempCanvas, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
     }
 
     function launchBall() {
@@ -471,14 +478,9 @@
             if (isInsideCurrentBase(px, py)) continue;
             const dx0 = px - x1, dy0 = py - y1;
             if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
-
             const idx = py * BOARD_W + px;
-            if (territoryMap[idx] === currentPlayer) {
-                return true;
-            }
-            if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
-                return true;
-            }
+            if (territoryMap[idx] === currentPlayer) return true;
+            if (wallMap[idx] === 1 || tempWallMap[idx] === 1) return true;
         }
         return false;
     }
@@ -490,12 +492,12 @@
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
             if (isInsideCurrentBase(px, py)) continue;
-            for (let dy = -BALL_RADIUS+3; dy <= BALL_RADIUS-3; dy++) {
-                for (let dx = -BALL_RADIUS+3; dx <= BALL_RADIUS-3; dx++) {
+            for (let dy = -BALL_RADIUS+2; dy <= BALL_RADIUS-2; dy++) {
+                for (let dx = -BALL_RADIUS+2; dx <= BALL_RADIUS-2; dx++) {
                     const nx = px + dx;
                     const ny = py + dy;
                     if (nx < WALL_THICKNESS || nx >= BOARD_W-WALL_THICKNESS || ny < WALL_THICKNESS || ny >= BOARD_H-WALL_THICKNESS) continue;
-                    if (dx*dx + dy*dy <= (BALL_RADIUS-3)*(BALL_RADIUS-3)) {
+                    if (dx*dx + dy*dy <= (BALL_RADIUS-2)*(BALL_RADIUS-2)) {
                         tempWallMap[ny*BOARD_W + nx] = 1;
                     }
                 }
@@ -587,7 +589,6 @@
                 territoryMap[i] = currentPlayer;
             }
         }
-
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
     }
 
@@ -604,10 +605,8 @@
         btnFire.disabled = true;
         updateHUD();
 
-        // 기지 영역 빼앗긴 비율 계산
         let p1BaseLost = 0, p2BaseLost = 0;
-        const p1BaseTotal = BASE_AREA;
-        const p2BaseTotal = BASE_AREA;
+        const baseArea = Math.PI * BASE_RADIUS * BASE_RADIUS;
 
         for (let y = Math.floor(BASE1_Y - BASE_RADIUS); y <= Math.ceil(BASE1_Y + BASE_RADIUS); y++) {
             for (let x = Math.floor(BASE1_X - BASE_RADIUS); x <= Math.ceil(BASE1_X + BASE_RADIUS); x++) {
@@ -628,11 +627,11 @@
             }
         }
 
-        if (p1BaseLost / p1BaseTotal > BASE_LOSS_RATIO) {
+        if (p1BaseLost / baseArea > BASE_LOSS_RATIO) {
             gameOver = true;
             showGameOver(false, '내 기지 50% 이상 빼앗김!');
             return;
-        } else if (p2BaseLost / p2BaseTotal > BASE_LOSS_RATIO) {
+        } else if (p2BaseLost / baseArea > BASE_LOSS_RATIO) {
             gameOver = true;
             showGameOver(true, '컴퓨터 기지 50% 이상 빼앗음!');
             return;
@@ -656,8 +655,8 @@
             if (gameOver || currentPlayer !== P2) return;
             const shotAngle = Math.random() * Math.PI * 2;
             const power = 0.4 + Math.random() * 0.6;
-            const dx = Math.cos(shotAngle) * power * 80;
-            const dy = Math.sin(shotAngle) * power * 80;
+            const dx = Math.cos(shotAngle) * power * 60;
+            const dy = Math.sin(shotAngle) * power * 60;
             launchBallForComputer(dx, dy);
         }, 500);
     }
@@ -666,7 +665,7 @@
         if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed) return;
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len < 10) return;
-        const power = Math.min(len / 80, 1);
+        const power = Math.min(len / 60, 1);
         const speed = power * MAX_SPEED;
         const angle = Math.atan2(dy, dx);
         ball.vx = Math.cos(angle) * speed;
@@ -703,4 +702,4 @@
             const baseX = BOARD_W/2;
             const baseY = BASE1_Y;
             const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
-            if (dist <= BASE_RADIUS - B
+            if (dist <= BASE_RADI
