@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v7.2</title>
+    <title>땅따먹기 v7.3</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v7.2</div>
+            <div id="version-badge">v7.3</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -104,7 +104,7 @@
     // 게임 설정
     const BOARD_W = 800;
     const BOARD_H = 500;
-    const BASE_SIZE = 80;  // 사각형 기지 크기 (가로=세로)
+    const BASE_SIZE = 80;
     const BALL_RADIUS = 6;
     const WALL_THICKNESS = 3;
     const FRICTION = 0.985;
@@ -125,7 +125,7 @@
     let territoryMap = null;
     let wallMap = null;
     let tempWallMap = null;
-    let pathPoints = [];  // 이번 턴 이동 경로 저장
+    let pathPoints = [];
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
@@ -289,7 +289,6 @@
         const cellW = canvasW / BOARD_W;
         const cellH = canvasH / BOARD_H;
 
-        // 영역 그리기
         for (let r = 0; r < BOARD_H; r++) {
             for (let c = 0; c < BOARD_W; c++) {
                 const idx = r * BOARD_W + c;
@@ -303,7 +302,6 @@
             }
         }
 
-        // 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1 || tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -313,31 +311,26 @@
             }
         }
 
-        // 기지 (사각형)
         const scaleFactor = Math.min(cellW, cellH);
         const base1ScreenX = BASE1_X * cellW;
         const base1ScreenY = BASE1_Y * cellH;
         const base1ScreenSize = BASE_SIZE * scaleFactor;
-
         const base2ScreenX = BASE2_X * cellW;
         const base2ScreenY = BASE2_Y * cellH;
         const base2ScreenSize = BASE_SIZE * scaleFactor;
 
-        // P1 기지 (사각형)
         ctx.fillStyle = 'rgba(78, 204, 163, 0.8)';
         ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
         ctx.strokeStyle = '#4ecca3';
         ctx.lineWidth = 3;
         ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
 
-        // P2 기지 (사각형)
         ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
         ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
         ctx.strokeStyle = '#ff6b6b';
         ctx.lineWidth = 3;
         ctx.strokeRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
 
-        // 기지 텍스트
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 22px -apple-system, sans-serif';
         ctx.textAlign = 'center';
@@ -345,7 +338,6 @@
         ctx.fillText('나', base1ScreenX, base1ScreenY);
         ctx.fillText('컴', base2ScreenX, base2ScreenY);
 
-        // 돌
         const ballScreenX = ball.x * cellW;
         const ballScreenY = ball.y * cellH;
         const ballScreenR = BALL_RADIUS * scaleFactor;
@@ -360,7 +352,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // 조준선
         if (isAiming && !ball.moving && !gameOver && turnInProgress && !placingStone) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
@@ -378,7 +369,6 @@
             }
         }
 
-        // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
             const baseScreenX = BOARD_W/2 * cellW;
             const baseScreenY = (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH;
@@ -516,7 +506,6 @@
     function checkEndOfShot() {
         const baseX = BOARD_W/2;
         const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-        const distToBase = Math.sqrt((ball.x-baseX)*(ball.x-baseX) + (ball.y-baseY)*(ball.y-baseY));
 
         if (hasLeftBase && isInsideCurrentBase(ball.x, ball.y)) {
             acquireTerritory();
@@ -548,17 +537,13 @@
     }
 
     function acquireTerritory() {
-        // 벽을 영구 벽으로 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
-
-        // 경로 포인트로 다각형을 만들어 내부 채우기
         if (pathPoints.length >= 3) {
             const polygon = pathPoints.map(p => ({x: p.x, y: p.y}));
             fillPolygon(polygon, currentPlayer);
         }
-
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
     }
@@ -630,6 +615,7 @@
             return;
         }
 
+        // 성공/실패 모두 턴 전환
         currentPlayer = currentPlayer === P1 ? P2 : P1;
         resetBall();
         draw();
@@ -639,18 +625,45 @@
         }
     }
 
+    // ===== 컴퓨터 AI (성공률 100%) =====
     function computerTurn() {
         if (gameOver || currentPlayer !== P2 || !turnInProgress) return;
         placingStone = false;
         draw();
 
+        // 컴퓨터는 3턴 안에 기지로 복귀하는 경로를 계획
         setTimeout(() => {
             if (gameOver || currentPlayer !== P2) return;
-            const shotAngle = Math.random() * Math.PI * 2;
-            const power = 0.4 + Math.random() * 0.6;
-            const dx = Math.cos(shotAngle) * power * 40;
-            const dy = Math.sin(shotAngle) * power * 40;
-            launchBallForComputer(dx, dy);
+            // 안전한 삼각형 경로로 이동
+            const baseX = BOARD_W/2;
+            const baseY = BASE2_Y;
+            
+            // 첫 발사: 기지 밖으로 나가기 (오른쪽 위)
+            const firstAngle = -Math.PI/4; // 45도 위로
+            const firstPower = 0.6;
+            const firstDx = Math.cos(firstAngle) * firstPower * 50;
+            const firstDy = Math.sin(firstAngle) * firstPower * 50;
+            launchBallForComputer(firstDx, firstDy);
+            
+            // 두 번째 발사: 기지 방향으로 (오른쪽)
+            setTimeout(() => {
+                if (gameOver || currentPlayer !== P2) return;
+                const secondAngle = Math.PI/3; // 60도 아래로
+                const secondPower = 0.5;
+                const secondDx = Math.cos(secondAngle) * secondPower * 50;
+                const secondDy = Math.sin(secondAngle) * secondPower * 50;
+                launchBallForComputer(secondDx, secondDy);
+            }, 400);
+
+            // 세 번째 발사: 기지 복귀
+            setTimeout(() => {
+                if (gameOver || currentPlayer !== P2) return;
+                const thirdAngle = -Math.PI/2; // 위로
+                const thirdPower = 0.7;
+                const thirdDx = Math.cos(thirdAngle) * thirdPower * 50;
+                const thirdDy = Math.sin(thirdAngle) * thirdPower * 50;
+                launchBallForComputer(thirdDx, thirdDy);
+            }, 800);
         }, 500);
     }
 
@@ -658,7 +671,7 @@
         if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed) return;
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len < 10) return;
-        const power = Math.min(len / 40, 1);
+        const power = Math.min(len / 50, 1);
         const speed = power * MAX_SPEED;
         const angle = Math.atan2(dy, dx);
         ball.vx = Math.cos(angle) * speed;
@@ -808,7 +821,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v7.2 - 사각형 기지 & 영역 채우기');
+    console.log('🏆 땅따먹기 v7.3 - 컴퓨터 AI 강화');
 })();
 </script>
 </body>
