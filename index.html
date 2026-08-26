@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v5.9</title>
+    <title>땅따먹기 v6.0</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v5.9</div>
+            <div id="version-badge">v6.0</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -108,7 +108,7 @@
     const BOARD_W = 1800;
     const BOARD_H = 1100;
     const BALL_RADIUS = 14;
-    const BASE_RADIUS = 112;  // 전체 맵의 약 2% (π×112² / (1800×1100) ≈ 2.0%)
+    const BASE_RADIUS = 112;
     const WALL_THICKNESS = 8;
     const FRICTION = 0.985;
     const MAX_SPEED = 22;
@@ -126,13 +126,14 @@
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
+    let shotsFired = 0;  // 이번 턴에 발사한 횟수 (첫 발사 = 0에서 1로)
     let hasLeftBase = false;
     let gameOver = false;
     let turnInProgress = false;
     let placingStone = false;
     let failed = false;
 
-    let ball = { x: BOARD_W/2, y: 150, vx: 0, vy: 0, moving: false };
+    let ball = { x: BOARD_W/2, y: 180, vx: 0, vy: 0, moving: false };
 
     let isAiming = false;
     let aimStartX = 0, aimStartY = 0;
@@ -177,6 +178,7 @@
         ball.x = baseX;
         ball.y = baseY;
         shotsLeft = MAX_SHOTS_PER_TURN;
+        shotsFired = 0;
         hasLeftBase = false;
         turnInProgress = true;
         placingStone = (currentPlayer === P1);
@@ -396,6 +398,7 @@
         ball.vy = Math.sin(aimAngle) * speed;
         ball.moving = true;
         shotsLeft--;
+        shotsFired++;  // 발사 횟수 증가
         isAiming = false;
         stopGaugeAnimation();
         btnFire.disabled = true;
@@ -434,12 +437,15 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        if (checkFailure(prevX, prevY, ball.x, ball.y)) {
-            ball.moving = false;
-            ball.vx = 0; ball.vy = 0;
-            if (animId) cancelAnimationFrame(animId);
-            handleFailure();
-            return;
+        // 첫 발사(shotsFired === 1)에서는 실패 검사 생략
+        if (shotsFired > 1) {
+            if (checkFailure(prevX, prevY, ball.x, ball.y)) {
+                ball.moving = false;
+                ball.vx = 0; ball.vy = 0;
+                if (animId) cancelAnimationFrame(animId);
+                handleFailure();
+                return;
+            }
         }
 
         paintTrailToTemp(prevX, prevY, ball.x, ball.y);
@@ -457,17 +463,17 @@
 
     function checkFailure(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 0; i <= steps; i++) {
+        for (let i = 1; i < steps; i++) {  // 시작점 제외
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideCurrentBase(px, py)) continue;
+            if (isInsideCurrentBase(px, py)) continue; // 기지 내부는 통과
             const idx = py * BOARD_W + px;
             if (territoryMap[idx] === currentPlayer) {
-                return true;
+                return true;  // 내 영역 진입
             }
             if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
-                return true;
+                return true;  // 벽 교차
             }
         }
         return false;
@@ -642,6 +648,7 @@
         ball.vy = Math.sin(angle) * speed;
         ball.moving = true;
         shotsLeft--;
+        shotsFired++;
         updateHUD();
         moveBall();
     }
@@ -754,7 +761,7 @@
     }
 
     function handleMouseUp(e) {
-        // 발사는 버튼으로
+        // 발사는 버튼으로만
     }
 
     canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
@@ -786,7 +793,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v5.9 - 맵 확대 & 라인 완성');
+    console.log('🏆 땅따먹기 v6.0 - 첫 발사 실패 조건 제거');
 })();
 </script>
 </body>
