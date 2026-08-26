@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v8.3</title>
+    <title>땅따먹기 v8.4</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v8.3</div>
+            <div id="version-badge">v8.4</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -110,7 +110,6 @@
     const btnCancel = document.getElementById('btn-cancel');
     const successToast = document.getElementById('success-toast');
 
-    // 게임 설정
     const BOARD_W = 800;
     const BOARD_H = 500;
     const BASE_SIZE = 80;
@@ -127,9 +126,8 @@
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    // 기지 위치: 벽에 붙이기
-    const BASE1_X = BOARD_W/2, BASE1_Y = BASE_SIZE/2;  // 위쪽 벽에 붙음
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - BASE_SIZE/2;  // 아래쪽 벽에 붙음
+    const BASE1_X = BOARD_W/2, BASE1_Y = BASE_SIZE/2;
+    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - BASE_SIZE/2;
     const TOTAL_AREA = BOARD_W * BOARD_H;
 
     let territoryMap = null;
@@ -347,14 +345,12 @@
         const base2ScreenY = BASE2_Y * cellH;
         const base2ScreenSize = BASE_SIZE * scaleFactor;
 
-        // P1 기지 (위쪽 벽)
         ctx.fillStyle = 'rgba(78, 204, 163, 0.8)';
         ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
         ctx.strokeStyle = '#4ecca3';
         ctx.lineWidth = 3;
         ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
 
-        // P2 기지 (아래쪽 벽)
         ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
         ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
         ctx.strokeStyle = '#ff6b6b';
@@ -557,6 +553,7 @@
     function checkEndOfShot() {
         if (hasLeftBase && isInsideMyTerritory(ball.x, ball.y)) {
             acquireTerritory();
+            draw();  // 영역 획득 즉시 화면 갱신
             showSuccessToast();
             endTurn(true);
         } else if (shotsLeft <= 0) {
@@ -804,7 +801,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v8.3 - 기지 벽에 붙이기');
+    console.log('🏆 땅따먹기 v8.4 - 영역 즉시 갱신');
 })();
 </script>
 </body>
