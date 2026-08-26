@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v3.0 - 자유 이동 영역 확장</title>
+    <title>땅따먹기 v4.0 - 3턴 & 영역 획득</title>
     <style>
         :root {
-            --bg: #111122;
+            --bg: #0f0f1a;
             --panel: #1a1a2e;
-            --accent: #e94560;
             --player1: #4ecca3;
             --player2: #ff6b6b;
             --neutral: #2a2a4a;
-            --wall: #555577;
+            --wall: #8888aa;
         }
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
         html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
-        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:700px; padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap:8px; }
+        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:800px; padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap:8px; }
         #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:16px; padding:10px 16px; }
         .hud-side { display:flex; align-items:center; gap:10px; }
         .hud-name { font-weight:700; font-size:16px; }
-        .hud-score { font-size:24px; font-weight:900; min-width:40px; text-align:center; }
+        .hud-score { font-size:24px; font-weight:900; min-width:50px; text-align:center; }
         #version-badge { font-size:12px; color:#aaa; background:#222; padding:2px 10px; border-radius:10px; }
+        #turn-info { font-size:14px; font-weight:600; color:#ddd; }
         #board-wrapper { flex:1; width:100%; position:relative; display:flex; align-items:center; justify-content:center; }
         canvas { border-radius:16px; background:#1a1a2e; box-shadow:0 8px 30px rgba(0,0,0,0.8); width:100%; height:100%; object-fit:contain; touch-action:none; }
         #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); border-radius:16px; z-index:10; opacity:0; pointer-events:none; transition:0.3s; }
         #overlay.active { opacity:1; pointer-events:auto; }
         #overlay-title { font-size:2.5rem; font-weight:900; margin-bottom:8px; }
         #overlay-desc { color:#ccc; margin-bottom:16px; text-align:center; padding:0 20px; }
-        #btn-restart { padding:14px 40px; font-size:20px; font-weight:700; border:none; border-radius:50px; background:var(--accent); color:#fff; cursor:pointer; }
+        #btn-restart { padding:14px 40px; font-size:20px; font-weight:700; border:none; border-radius:50px; background:var(--accent, #e94560); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
         #instructions { color:#888; font-size:12px; text-align:center; }
         @media (max-width:500px) { .hud-score { font-size:20px; } #overlay-title { font-size:2rem; } }
@@ -44,7 +44,10 @@
                 <div class="hud-score" id="p1-score" style="color:var(--player1);">0%</div>
             </div>
         </div>
-        <div id="version-badge">v3.0</div>
+        <div style="text-align:center;">
+            <div id="turn-info"></div>
+            <div id="version-badge">v4.0</div>
+        </div>
         <div class="hud-side">
             <div style="text-align:right;">
                 <div class="hud-name" style="color:var(--player2);">컴퓨터</div>
@@ -61,7 +64,7 @@
             <button id="btn-restart">🔄 다시 시작</button>
         </div>
     </div>
-    <div id="instructions">👆 돌을 드래그해서 튕기세요! (길게 드래그 = 강하게)</div>
+    <div id="instructions">👆 돌을 드래그해서 튕기세요! (최대 3번, 기지 복귀 시 영역 획득)</div>
 </div>
 <script>
 (function() {
@@ -73,73 +76,88 @@
     const btnRestart = document.getElementById('btn-restart');
     const p1ScoreEl = document.getElementById('p1-score');
     const p2ScoreEl = document.getElementById('p2-score');
+    const turnInfoEl = document.getElementById('turn-info');
 
-    // 게임 설정
-    const BOARD_W = 1000;
-    const BOARD_H = 700;
-    const BALL_RADIUS = 12;
-    const BASE_RADIUS = 45;
+    // ===== 게임 설정 =====
+    const BOARD_W = 1400;
+    const BOARD_H = 900;
+    const BALL_RADIUS = 14;
+    const BASE_RADIUS = 80;
     const WALL_THICKNESS = 8;
     const FRICTION = 0.985;
-    const MAX_SPEED = 18;
+    const MAX_SPEED = 22;
     const MIN_SPEED = 0.3;
+    const MAX_SHOTS_PER_TURN = 3;  // 한 턴에 최대 발사 횟수
+    const WIN_RATIO = 0.6;         // 승리 기준 영역 비율
 
-    // 플레이어
     const P1 = 1, P2 = 2;
+    const NEUTRAL = 0;
 
-    // 상태
-    let ball = { x: BOARD_W/2, y: 70, vx: 0, vy: 0, owner: P1, moving: false };
-    let p1Base = { x: BOARD_W/2, y: 70 };
-    let p2Base = { x: BOARD_W/2, y: BOARD_H-70 };
+    // 픽셀 기반 영역 맵
+    let territoryMap = null;   // 0=중립, 1=P1, 2=P2
+    let wallMap = null;        // 0=벽 아님, 1=벽 (이동 경로, 영구 유지)
+    let tempWallMap = null;    // 현재 턴에서 그은 벽 임시 저장
 
-    // 픽셀 기반 영역 맵 (true/false로 각 플레이어 영역 표시)
-    let territoryMap = null;
-    let gameOver = false;
+    // 플레이어 상태
     let currentPlayer = P1;
-    let animId = null;
+    let shotsLeft = MAX_SHOTS_PER_TURN;
+    let hasLeftBase = false;
+    let gameOver = false;
+    let turnInProgress = false;  // true: 돌이 움직이는 중이거나 발사 대기 중
 
-    // 드래그 추적
+    // 돌 상태
+    let ball = { x: 0, y: 0, vx: 0, vy: 0, moving: false };
+
+    // 드래그
     let dragging = false;
     let dragStartX = 0, dragStartY = 0;
     let dragCurrentX = 0, dragCurrentY = 0;
 
-    // 캔버스 크기
+    // 캔버스
     let canvasW = 0, canvasH = 0;
     let dpr = 1;
     let scaleX = 1, scaleY = 1;
+    let animId = null;
 
     function initTerritory() {
         territoryMap = new Uint8Array(BOARD_W * BOARD_H);
-        // 플레이어1 기지 영역
-        fillCircle(p1Base.x, p1Base.y, BASE_RADIUS, P1);
-        // 플레이어2 기지 영역
-        fillCircle(p2Base.x, p2Base.y, BASE_RADIUS, P2);
+        wallMap = new Uint8Array(BOARD_W * BOARD_H);
+        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        // 기지 영역 칠하기
+        fillCircleToMap(territoryMap, BOARD_W/2, 150, BASE_RADIUS, P1);
+        fillCircleToMap(territoryMap, BOARD_W/2, BOARD_H-150, BASE_RADIUS, P2);
+        // 기지 벽은 영역 자체로 취급 (벽맵에는 추가 안 함)
     }
 
-    function fillCircle(cx, cy, radius, owner) {
+    function fillCircleToMap(map, cx, cy, radius, owner) {
         const r2 = radius * radius;
         for (let y = Math.floor(cy-radius); y <= Math.ceil(cy+radius); y++) {
             for (let x = Math.floor(cx-radius); x <= Math.ceil(cx+radius); x++) {
                 if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
                 const dx = x-cx, dy = y-cy;
                 if (dx*dx + dy*dy <= r2) {
-                    territoryMap[y*BOARD_W + x] = owner;
+                    map[y*BOARD_W + x] = owner;
                 }
             }
         }
     }
 
     function resetBall() {
-        ball.owner = currentPlayer;
         ball.moving = false;
         ball.vx = 0; ball.vy = 0;
         if (currentPlayer === P1) {
-            ball.x = p1Base.x;
-            ball.y = p1Base.y;
+            ball.x = BOARD_W/2;
+            ball.y = 150;
         } else {
-            ball.x = p2Base.x;
-            ball.y = p2Base.y;
+            ball.x = BOARD_W/2;
+            ball.y = BOARD_H-150;
         }
+        shotsLeft = MAX_SHOTS_PER_TURN;
+        hasLeftBase = false;
+        turnInProgress = true;
+        // 현재 턴의 벽 초기화
+        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        updateHUD();
     }
 
     function initGame() {
@@ -162,6 +180,9 @@
         const total = BOARD_W * BOARD_H;
         p1ScoreEl.textContent = Math.round(p1Count/total*100) + '%';
         p2ScoreEl.textContent = Math.round(p2Count/total*100) + '%';
+        const playerName = currentPlayer === P1 ? '🟢 나' : '🔴 컴퓨터';
+        const shotInfo = `${playerName} | 남은 발사: ${shotsLeft}`;
+        turnInfoEl.textContent = shotInfo;
     }
 
     function resizeCanvas() {
@@ -190,11 +211,7 @@
         if (!territoryMap) return;
         ctx.clearRect(0, 0, canvasW, canvasH);
 
-        // 보드 배경
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, canvasW, canvasH);
-
-        // 영역 맵을 임시 캔버스에 그려서 확대/축소 없이 효율적으로 렌더링
+        // 오프스크린 캔버스에 그리기
         const offscreen = document.createElement('canvas');
         offscreen.width = BOARD_W;
         offscreen.height = BOARD_H;
@@ -223,22 +240,19 @@
         }
         offCtx.putImageData(imgData, 0, 0);
 
+        // 벽 (영구 벽 + 임시 벽) 그리기
+        for (let i = 0; i < wallMap.length; i++) {
+            if (wallMap[i] === 1 || tempWallMap[i] === 1) {
+                const x = i % BOARD_W;
+                const y = Math.floor(i / BOARD_W);
+                offCtx.fillStyle = '#8888aa';
+                offCtx.fillRect(x, y, 1, 1);
+            }
+        }
+
         // 기지 표시
-        offCtx.fillStyle = 'rgba(255,255,255,0.3)';
-        offCtx.beginPath();
-        offCtx.arc(p1Base.x, p1Base.y, BASE_RADIUS, 0, Math.PI*2);
-        offCtx.fill();
-        offCtx.fillStyle = '#fff';
-        offCtx.font = 'bold 28px -apple-system, sans-serif';
-        offCtx.textAlign = 'center';
-        offCtx.textBaseline = 'middle';
-        offCtx.fillText('나', p1Base.x, p1Base.y);
-        offCtx.fillStyle = 'rgba(255,255,255,0.3)';
-        offCtx.beginPath();
-        offCtx.arc(p2Base.x, p2Base.y, BASE_RADIUS, 0, Math.PI*2);
-        offCtx.fill();
-        offCtx.fillStyle = '#fff';
-        offCtx.fillText('컴', p2Base.x, p2Base.y);
+        drawBase(offCtx, BOARD_W/2, 150, BASE_RADIUS, '나', P1);
+        drawBase(offCtx, BOARD_W/2, BOARD_H-150, BASE_RADIUS, '컴', P2);
 
         // 돌 그리기
         offCtx.shadowColor = 'rgba(255,255,255,0.7)';
@@ -256,18 +270,17 @@
         offCtx.fillStyle = 'rgba(255,255,255,0.6)';
         offCtx.fill();
 
-        // 드래그 가이드 그리기
-        if (dragging && !ball.moving && !gameOver) {
+        // 드래그 가이드
+        if (dragging && !ball.moving && !gameOver && turnInProgress) {
             const dx = dragStartX - dragCurrentX;
             const dy = dragStartY - dragCurrentY;
             const len = Math.sqrt(dx*dx + dy*dy);
             if (len > 5) {
-                const power = Math.min(len / 100, 1);
                 const angle = Math.atan2(dy, dx);
-                const guideLen = 30 + power * 80;
-                offCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-                offCtx.lineWidth = 3;
-                offCtx.setLineDash([6, 6]);
+                const guideLen = 40 + Math.min(len/60, 1) * 100;
+                offCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+                offCtx.lineWidth = 4;
+                offCtx.setLineDash([8, 8]);
                 offCtx.beginPath();
                 offCtx.moveTo(ball.x, ball.y);
                 offCtx.lineTo(ball.x + Math.cos(angle)*guideLen, ball.y + Math.sin(angle)*guideLen);
@@ -276,12 +289,29 @@
             }
         }
 
-        // 오프스크린 캔버스를 메인 캔버스에 그리기
         ctx.drawImage(offscreen, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
     }
 
+    function drawBase(ctx, x, y, radius, label, owner) {
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${radius*0.7}px -apple-system, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y);
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI*2);
+        ctx.stroke();
+    }
+
+    // 이동 및 벽 그리기
     function launchBall(dx, dy) {
-        if (ball.moving || gameOver) return;
+        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0) return;
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len < 10) return;
         const power = Math.min(len / 80, 1);
@@ -290,28 +320,25 @@
         ball.vx = Math.cos(angle) * speed;
         ball.vy = Math.sin(angle) * speed;
         ball.moving = true;
-        // 경로 기록을 위해 이동 시작
+        shotsLeft--;  // 발사 횟수 차감
+        updateHUD();
         moveBall();
     }
 
     function moveBall() {
         if (!ball.moving) return;
-        // 마찰 적용
+        // 마찰
         ball.vx *= FRICTION;
         ball.vy *= FRICTION;
         const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
         if (speed < MIN_SPEED) {
             ball.moving = false;
             ball.vx = 0; ball.vy = 0;
-            // 턴 종료
-            endTurn();
+            checkEndOfShot();
             return;
         }
 
-        // 이전 위치 저장
         const prevX = ball.x, prevY = ball.y;
-
-        // 위치 업데이트
         ball.x += ball.vx;
         ball.y += ball.vy;
 
@@ -331,36 +358,117 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        // 경로에 영역 칠하기
-        paintTrail(prevX, prevY, ball.x, ball.y);
+        // 경로를 벽으로 기록
+        paintTrailToTemp(prevX, prevY, ball.x, ball.y);
 
-        // 다음 프레임
         animId = requestAnimationFrame(moveBall);
         draw();
     }
 
-    function paintTrail(x1, y1, x2, y2) {
-        const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 1.5);
+    function paintTrailToTemp(x1, y1, x2, y2) {
+        const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            // 두꺼운 선 그리기
-            for (let dy = -BALL_RADIUS+2; dy <= BALL_RADIUS-2; dy++) {
-                for (let dx = -BALL_RADIUS+2; dx <= BALL_RADIUS-2; dx++) {
+            // 두꺼운 선 (벽 두께)
+            for (let dy = -BALL_RADIUS+3; dy <= BALL_RADIUS-3; dy++) {
+                for (let dx = -BALL_RADIUS+3; dx <= BALL_RADIUS-3; dx++) {
                     const nx = px + dx;
                     const ny = py + dy;
                     if (nx < WALL_THICKNESS || nx >= BOARD_W-WALL_THICKNESS || ny < WALL_THICKNESS || ny >= BOARD_H-WALL_THICKNESS) continue;
-                    if (dx*dx + dy*dy <= (BALL_RADIUS-2)*(BALL_RADIUS-2)) {
-                        territoryMap[ny*BOARD_W + nx] = currentPlayer;
+                    if (dx*dx + dy*dy <= (BALL_RADIUS-3)*(BALL_RADIUS-3)) {
+                        tempWallMap[ny*BOARD_W + nx] = 1;
                     }
                 }
             }
         }
     }
 
-    function endTurn() {
+    function checkEndOfShot() {
+        // 기지 복귀 확인
+        const baseX = BOARD_W/2;
+        const baseY = currentPlayer === P1 ? 150 : BOARD_H-150;
+        const distToBase = Math.sqrt((ball.x-baseX)*(ball.x-baseX) + (ball.y-baseY)*(ball.y-baseY));
+
+        if (hasLeftBase && distToBase <= BASE_RADIUS) {
+            // 기지 복귀 성공! 영역 획득
+            acquireTerritory();
+            endTurn(true);
+        } else if (shotsLeft <= 0) {
+            // 3번 발사했지만 기지 복귀 실패
+            endTurn(false);
+        } else {
+            // 아직 발사 기회가 남음
+            if (!hasLeftBase && distToBase > BASE_RADIUS) {
+                hasLeftBase = true;
+            }
+            turnInProgress = true;  // 계속 발사 가능
+            draw();
+        }
+    }
+
+    // 영역 획득: tempWallMap을 영구 벽에 추가하고, 벽으로 둘러싸인 내부를 현재 플레이어 영역으로 채움
+    function acquireTerritory() {
+        // 1. 임시 벽을 영구 벽에 합치기
+        for (let i = 0; i < wallMap.length; i++) {
+            if (tempWallMap[i] === 1) wallMap[i] = 1;
+        }
+        // 2. flood fill: 현재 플레이어 기지에서 도달 가능한 영역을 표시
+        const visited = new Uint8Array(BOARD_W * BOARD_H);
+        const queue = [];
+        const startX = Math.floor(BOARD_W/2);
+        const startY = currentPlayer === P1 ? 150 : BOARD_H-150;
+        const startIdx = startY * BOARD_W + startX;
+        visited[startIdx] = 1;
+        queue.push(startIdx);
+
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        while (queue.length > 0) {
+            const idx = queue.shift();
+            const x = idx % BOARD_W;
+            const y = Math.floor(idx / BOARD_W);
+            for (const [dx, dy] of dirs) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx < 0 || nx >= BOARD_W || ny < 0 || ny >= BOARD_H) continue;
+                const nIdx = ny * BOARD_W + nx;
+                if (visited[nIdx]) continue;
+                // 벽이면 통과 불가
+                if (wallMap[nIdx] === 1) continue;
+                // 상대 영역이면 통과 불가 (중립 또는 자신 영역만 가능)
+                if (territoryMap[nIdx] !== NEUTRAL && territoryMap[nIdx] !== currentPlayer) continue;
+                visited[nIdx] = 1;
+                queue.push(nIdx);
+            }
+        }
+
+        // 3. 방문하지 않은 중립 영역을 현재 플레이어 영역으로 채움
+        for (let i = 0; i < territoryMap.length; i++) {
+            if (territoryMap[i] === NEUTRAL && !visited[i]) {
+                territoryMap[i] = currentPlayer;
+            }
+        }
+
+        // 4. 임시 벽 클리어
+        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+    }
+
+    function endTurn(success) {
+        turnInProgress = false;
+        ball.moving = false;
+        ball.vx = 0; ball.vy = 0;
         updateHUD();
+
+        if (!success) {
+            // 실패해도 영구 벽은 유지? 원래 규칙상 이동한 경로는 벽으로 남는 것이 맞다.
+            // 실패 시에도 tempWallMap을 영구 벽에 합치고, 영역은 획득하지 않음
+            for (let i = 0; i < wallMap.length; i++) {
+                if (tempWallMap[i] === 1) wallMap[i] = 1;
+            }
+            tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        }
+
         // 승리 조건 확인
         let p1Count = 0, p2Count = 0;
         for (let i = 0; i < territoryMap.length; i++) {
@@ -368,31 +476,31 @@
             else if (territoryMap[i] === P2) p2Count++;
         }
         const total = BOARD_W * BOARD_H;
-        const p1Ratio = p1Count/total;
-        const p2Ratio = p2Count/total;
-        if (p1Ratio > 0.6) {
+        if (p1Count/total >= WIN_RATIO) {
             gameOver = true;
             showGameOver(true, '영역 60% 이상 확보!');
             return;
-        } else if (p2Ratio > 0.6) {
+        } else if (p2Count/total >= WIN_RATIO) {
             gameOver = true;
             showGameOver(false, '컴퓨터가 60% 이상 확보!');
             return;
         }
+
         // 턴 전환
         currentPlayer = currentPlayer === P1 ? P2 : P1;
         resetBall();
         draw();
+
         if (currentPlayer === P2 && !gameOver) {
             setTimeout(computerTurn, 1000);
         }
     }
 
     function computerTurn() {
-        if (gameOver || currentPlayer !== P2) return;
-        // 간단한 AI: 랜덤 방향으로 발사
+        if (gameOver || currentPlayer !== P2 || !turnInProgress) return;
+        // 간단한 AI: 랜덤 방향, 적당한 힘으로 발사
         const angle = Math.random() * Math.PI * 2;
-        const power = 0.5 + Math.random() * 0.5;
+        const power = 0.4 + Math.random() * 0.6;
         const dx = Math.cos(angle) * power * 80;
         const dy = Math.sin(angle) * power * 80;
         launchBall(dx, dy);
@@ -406,21 +514,26 @@
     }
 
     // 입력 처리
+    function getBoardCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
     function handleTouchStart(e) {
         e.preventDefault();
-        if (gameOver || ball.moving) return;
+        if (gameOver || ball.moving || !turnInProgress) return;
         const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const cx = (touch.clientX - rect.left) * scaleX;
-        const cy = (touch.clientY - rect.top) * scaleY;
-        // 돌 근처에서만 드래그 가능
-        const dist = Math.sqrt((cx-ball.x)*(cx-ball.x) + (cy-ball.y)*(cy-ball.y));
+        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
+        const dist = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
         if (dist < BALL_RADIUS * 3) {
             dragging = true;
-            dragStartX = cx;
-            dragStartY = cy;
-            dragCurrentX = cx;
-            dragCurrentY = cy;
+            dragStartX = x;
+            dragStartY = y;
+            dragCurrentX = x;
+            dragCurrentY = y;
             draw();
         }
     }
@@ -429,9 +542,9 @@
         e.preventDefault();
         if (!dragging) return;
         const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        dragCurrentX = (touch.clientX - rect.left) * scaleX;
-        dragCurrentY = (touch.clientY - rect.top) * scaleY;
+        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
+        dragCurrentX = x;
+        dragCurrentY = y;
         draw();
     }
 
@@ -450,27 +563,24 @@
     canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
     canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
 
-    // 마우스 지원
     canvas.addEventListener('mousedown', (e) => {
-        if (gameOver || ball.moving) return;
-        const rect = canvas.getBoundingClientRect();
-        const cx = (e.clientX - rect.left) * scaleX;
-        const cy = (e.clientY - rect.top) * scaleY;
-        const dist = Math.sqrt((cx-ball.x)*(cx-ball.x) + (cy-ball.y)*(cy-ball.y));
+        if (gameOver || ball.moving || !turnInProgress) return;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        const dist = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
         if (dist < BALL_RADIUS * 3) {
             dragging = true;
-            dragStartX = cx;
-            dragStartY = cy;
-            dragCurrentX = cx;
-            dragCurrentY = cy;
+            dragStartX = x;
+            dragStartY = y;
+            dragCurrentX = x;
+            dragCurrentY = y;
             draw();
         }
     });
     canvas.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        const rect = canvas.getBoundingClientRect();
-        dragCurrentX = (e.clientX - rect.left) * scaleX;
-        dragCurrentY = (e.clientY - rect.top) * scaleY;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        dragCurrentX = x;
+        dragCurrentY = y;
         draw();
     });
     canvas.addEventListener('mouseup', (e) => {
@@ -491,7 +601,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v3.0 - 진짜 옛날 땅따먹기 시작!');
+    console.log('🏆 땅따먹기 v4.0 - 3턴 & 영역 획득 시작!');
 })();
 </script>
 </body>
