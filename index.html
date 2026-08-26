@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v8.4</title>
+    <title>땅따먹기 v8.5</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v8.4</div>
+            <div id="version-badge">v8.5</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -115,13 +115,14 @@
     const BASE_SIZE = 80;
     const BALL_RADIUS = 6;
     const WALL_THICKNESS = 3;
-    const FRICTION = 0.985;
-    const MAX_SPEED = 14;
-    const MIN_SPEED = 0.3;
+    const FRICTION = 0.99;  // 마찰 감소로 파워 대비 거리 일정하게
+    const MAX_SPEED = 12;
+    const MIN_SPEED = 0.2;
     const MAX_SHOTS_PER_TURN = 3;
     const BASE_LOSS_RATIO = 0.5;
     const POWER_MAX = 10;
     const SAFE_DIST_FROM_START = BALL_RADIUS * 3;
+    const TRAIL_THICKNESS = 2;  // 얇은 라인
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -521,12 +522,12 @@
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
             if (isInsideMyTerritory(px, py)) continue;
-            for (let dy = -BALL_RADIUS+2; dy <= BALL_RADIUS-2; dy++) {
-                for (let dx = -BALL_RADIUS+2; dx <= BALL_RADIUS-2; dx++) {
+            for (let dy = -TRAIL_THICKNESS; dy <= TRAIL_THICKNESS; dy++) {
+                for (let dx = -TRAIL_THICKNESS; dx <= TRAIL_THICKNESS; dx++) {
                     const nx = px + dx;
                     const ny = py + dy;
                     if (nx < WALL_THICKNESS || nx >= BOARD_W-WALL_THICKNESS || ny < WALL_THICKNESS || ny >= BOARD_H-WALL_THICKNESS) continue;
-                    if (dx*dx + dy*dy <= (BALL_RADIUS-2)*(BALL_RADIUS-2)) {
+                    if (dx*dx + dy*dy <= TRAIL_THICKNESS*TRAIL_THICKNESS) {
                         tempWallMap[ny*BOARD_W + nx] = 1;
                     }
                 }
@@ -553,7 +554,7 @@
     function checkEndOfShot() {
         if (hasLeftBase && isInsideMyTerritory(ball.x, ball.y)) {
             acquireTerritory();
-            draw();  // 영역 획득 즉시 화면 갱신
+            draw();  // 즉시 갱신
             showSuccessToast();
             endTurn(true);
         } else if (shotsLeft <= 0) {
@@ -801,7 +802,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v8.4 - 영역 즉시 갱신');
+    console.log('🏆 땅따먹기 v8.5 - P2 영역 색 & 라인 두께 & 파워 거리');
 })();
 </script>
 </body>
