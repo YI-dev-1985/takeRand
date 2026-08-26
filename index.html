@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v8.1</title>
+    <title>땅따먹기 v8.2</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v8.1</div>
+            <div id="version-badge">v8.2</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -134,7 +134,7 @@
     let territoryMap = null;
     let wallMap = null;
     let tempWallMap = null;
-    let pathPoints = [];
+    let pathPoints = [];  // 이동 경로 (시작점, 정지점들)
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
@@ -142,8 +142,8 @@
     let hasLeftBase = false;
     let gameOver = false;
     let turnInProgress = false;
-    let placingMode = true;      // true: 공 배치 모드, false: 발사 모드
-    let positionConfirmed = false;  // 위치 확정 여부
+    let placingMode = true;
+    let positionConfirmed = false;
     let failed = false;
 
     let ball = { x: BASE1_X, y: BASE1_Y, vx: 0, vy: 0, moving: false };
@@ -379,7 +379,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // 조준선 (발사 모드에서만)
         if (isAiming && !placingMode && !ball.moving && !gameOver) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
@@ -397,7 +396,6 @@
             }
         }
 
-        // 배치 모드 표시
         if (placingMode && !ball.moving && !gameOver) {
             ctx.strokeStyle = 'rgba(255,255,255,0.5)';
             ctx.lineWidth = 2;
@@ -580,42 +578,47 @@
     }
 
     function acquireTerritory() {
+        // 1. 임시 벽을 영구 벽으로 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
-        if (pathPoints.length >= 3) {
-            const polygon = pathPoints.map(p => ({x: p.x, y: p.y}));
-            fillPolygon(polygon, currentPlayer);
-        }
-        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
-        pathPoints = [];
-    }
 
-    function fillPolygon(polygon, owner) {
-        const minX = Math.max(0, Math.floor(Math.min(...polygon.map(p => p.x))));
-        const maxX = Math.min(BOARD_W - 1, Math.ceil(Math.max(...polygon.map(p => p.x))));
-        const minY = Math.max(0, Math.floor(Math.min(...polygon.map(p => p.y))));
-        const maxY = Math.min(BOARD_H - 1, Math.ceil(Math.max(...polygon.map(p => p.y))));
+        // 2. 기지에서 Flood Fill로 벽 안쪽 영역 찾기
+        const visited = new Uint8Array(BOARD_W * BOARD_H);
+        const queue = [];
+        const startX = Math.floor(BASE1_X);  // 현재 플레이어 기지
+        const startY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
+        const startIdx = startY * BOARD_W + startX;
+        visited[startIdx] = 1;
+        queue.push(startIdx);
 
-        for (let y = minY; y <= maxY; y++) {
-            for (let x = minX; x <= maxX; x++) {
-                if (isPointInPolygon(x, y, polygon)) {
-                    territoryMap[y * BOARD_W + x] = owner;
-                }
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        while (queue.length > 0) {
+            const idx = queue.shift();
+            const x = idx % BOARD_W;
+            const y = Math.floor(idx / BOARD_W);
+            for (const [dx, dy] of dirs) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx < 0 || nx >= BOARD_W || ny < 0 || ny >= BOARD_H) continue;
+                const nIdx = ny * BOARD_W + nx;
+                if (visited[nIdx]) continue;
+                if (wallMap[nIdx] === 1) continue;  // 벽이면 막힘
+                if (territoryMap[nIdx] !== NEUTRAL && territoryMap[nIdx] !== currentPlayer) continue;
+                visited[nIdx] = 1;
+                queue.push(nIdx);
             }
         }
-    }
 
-    function isPointInPolygon(x, y, polygon) {
-        let inside = false;
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            const xi = polygon[i].x, yi = polygon[i].y;
-            const xj = polygon[j].x, yj = polygon[j].y;
-            const intersect = ((yi > y) !== (yj > y)) &&
-                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
+        // 3. 방문하지 않은 중립 영역을 currentPlayer로 채움
+        for (let i = 0; i < territoryMap.length; i++) {
+            if (!visited[i] && territoryMap[i] === NEUTRAL) {
+                territoryMap[i] = currentPlayer;
+            }
         }
-        return inside;
+
+        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        pathPoints = [];
     }
 
     function endTurn(success) {
@@ -801,7 +804,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v8.1 - 위치 지정 완료/취소');
+    console.log('🏆 땅따먹기 v8.2 - 정확한 영역 채우기');
 })();
 </script>
 </body>
