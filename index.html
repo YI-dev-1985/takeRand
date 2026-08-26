@@ -3,66 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>땅따먹기 - Land Grab</title>
+    <title>땅따먹기 v2.0 - 돌 튕기기 대전</title>
     <style>
         :root {
-            --bg: #1a1a2e;
-            --panel: #16213e;
+            --bg: #0f0f1a;
+            --panel: #1a1a2e;
             --accent: #e94560;
             --gold: #ffd700;
+            --player1: #4ecca3;
+            --player2: #ff6b6b;
+            --base1: #1e6f5c;
+            --base2: #8b3a3a;
+            --neutral: #2a2a4a;
             --text: #eee;
-            --tile-unclaimed: #2a2a4a;
-            --tile-claimed: #4ecca3;
-            --player-color: #ff6b6b;
-            --shadow: rgba(0, 0, 0, 0.5);
         }
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
-        html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; -webkit-touch-action:none; overscroll-behavior:none; }
-        #game-container { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; max-width:600px; padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap:8px; position:relative; }
-        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 14px; background:var(--panel); border-radius:14px; box-shadow:0 4px 16px var(--shadow); flex-shrink:0; min-height:52px; }
-        .hud-item { display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:clamp(14px, 3vw, 18px); letter-spacing:0.5px; }
-        .hud-icon { font-size:clamp(18px, 4vw, 24px); line-height:1; }
-        #score { color:var(--gold); font-size:clamp(18px, 4.5vw, 26px); font-weight:800; min-width:40px; text-align:center; }
-        #timer { color:var(--accent); font-size:clamp(18px, 4.5vw, 26px); font-weight:800; min-width:44px; text-align:center; font-variant-numeric:tabular-nums; }
-        #canvas-wrapper { position:relative; flex:1; width:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
-        canvas { display:block; border-radius:16px; box-shadow:0 8px 32px var(--shadow), 0 0 0 2px rgba(255,255,255,0.06); background:var(--panel); width:100%; height:100%; object-fit:contain; touch-action:none; -webkit-touch-action:none; }
-        #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); border-radius:16px; z-index:10; opacity:0; pointer-events:none; transition:opacity 0.35s ease; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+        html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
+        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:650px; padding:max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); gap:10px; }
+        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:16px; padding:10px 16px; box-shadow:0 4px 20px rgba(0,0,0,0.6); }
+        .hud-left, .hud-right { display:flex; flex-direction:column; gap:4px; }
+        .hud-name { font-weight:700; font-size:16px; }
+        .hud-score { font-size:24px; font-weight:900; }
+        .hud-center { display:flex; flex-direction:column; align-items:center; gap:2px; }
+        #turn-indicator { font-size:14px; font-weight:600; padding:4px 12px; border-radius:20px; background:#333; }
+        #version-badge { font-size:11px; color:#aaa; background:#222; padding:2px 8px; border-radius:8px; }
+        #board-wrapper { flex:1; width:100%; display:flex; align-items:center; justify-content:center; position:relative; }
+        canvas { border-radius:20px; background:var(--panel); box-shadow:0 10px 30px rgba(0,0,0,0.7), 0 0 0 2px rgba(255,255,255,0.05); width:100%; height:100%; object-fit:contain; touch-action:none; }
+        #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); border-radius:20px; z-index:10; opacity:0; pointer-events:none; transition:0.3s; }
         #overlay.active { opacity:1; pointer-events:auto; }
-        #overlay-title { font-size:clamp(28px, 7vw, 44px); font-weight:900; color:var(--gold); margin-bottom:6px; text-shadow:0 2px 12px rgba(255,215,0,0.4); letter-spacing:1px; }
-        #overlay-subtitle { font-size:clamp(14px, 3.5vw, 20px); color:#ccc; margin-bottom:18px; text-align:center; padding:0 16px; line-height:1.4; }
-        #overlay-score { font-size:clamp(20px, 5vw, 32px); color:#fff; font-weight:700; margin-bottom:8px; }
-        #overlay-score span { color:var(--gold); font-size:clamp(28px, 7vw, 44px); font-weight:900; }
-        #btn-restart { padding:14px 40px; font-size:clamp(16px, 4vw, 22px); font-weight:700; color:#fff; background:var(--accent); border:none; border-radius:50px; cursor:pointer; letter-spacing:1px; box-shadow:0 6px 20px rgba(233,69,96,0.4); transition:transform 0.15s ease, box-shadow 0.15s ease; touch-action:manipulation; -webkit-touch-action:manipulation; }
-        #btn-restart:active { transform:scale(0.95); box-shadow:0 3px 10px rgba(233,69,96,0.3); }
-        #btn-restart:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(233,69,96,0.5); }
-        #hint { font-size:clamp(11px, 2.5vw, 14px); color:#888; text-align:center; flex-shrink:0; letter-spacing:0.5px; padding:2px 0; }
-        @media (max-width:400px) {
-            #game-container { padding:6px 6px max(6px, env(safe-area-inset-bottom)) 6px; gap:4px; }
-            #hud { padding:6px 10px; border-radius:10px; min-height:42px; }
-            canvas { border-radius:12px; }
-            #overlay { border-radius:12px; }
-            #btn-restart { padding:12px 30px; }
-        }
+        #overlay-title { font-size:2.5rem; font-weight:900; margin-bottom:8px; }
+        #overlay-desc { color:#ccc; margin-bottom:16px; text-align:center; padding:0 20px; }
+        #btn-restart { padding:14px 40px; font-size:20px; font-weight:700; border:none; border-radius:50px; background:var(--accent); color:#fff; cursor:pointer; }
+        #btn-restart:active { transform:scale(0.95); }
+        #instructions { color:#888; font-size:12px; text-align:center; }
+        @media (max-width:400px) { #hud { padding:6px 10px; } .hud-score { font-size:20px; } #overlay-title { font-size:2rem; } }
     </style>
 </head>
 <body>
 <div id="game-container">
     <div id="hud">
-        <div class="hud-item"><span class="hud-icon">🏆</span><span>점수</span><span id="score">0</span></div>
-        <div class="hud-item"><span class="hud-icon">⏱️</span><span id="timer">60</span></div>
-        <div class="hud-item"><span class="hud-icon">🗺️</span><span id="remaining">0</span></div>
+        <div class="hud-left">
+            <div class="hud-name" style="color:var(--player1);">🟢 나</div>
+            <div class="hud-score" id="p1-score">0</div>
+        </div>
+        <div class="hud-center">
+            <div id="turn-indicator">내 차례</div>
+            <div id="version-badge">v2.0</div>
+        </div>
+        <div class="hud-right">
+            <div class="hud-name" style="color:var(--player2);">🔴 컴퓨터</div>
+            <div class="hud-score" id="p2-score">0</div>
+        </div>
     </div>
-    <div id="canvas-wrapper">
+    <div id="board-wrapper">
         <canvas id="gameCanvas"></canvas>
         <div id="overlay">
-            <div id="overlay-title">🏆 땅따먹기</div>
-            <div id="overlay-subtitle">스와이프해서 땅을 차지하세요!</div>
-            <div id="overlay-score">점수: <span id="final-score">0</span></div>
+            <div id="overlay-title"></div>
+            <div id="overlay-desc"></div>
             <button id="btn-restart">🔄 다시 시작</button>
         </div>
     </div>
-    <div id="hint">👆 스와이프: 위·아래·좌·우 이동</div>
+    <div id="instructions">👆 돌을 튕길 방향으로 스와이프하세요 (3턴 안에 기지 복귀)</div>
 </div>
 <script>
 (function() {
@@ -70,373 +71,307 @@
     const ctx = canvas.getContext('2d');
     const overlay = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlay-title');
-    const overlaySubtitle = document.getElementById('overlay-subtitle');
-    const finalScoreEl = document.getElementById('final-score');
+    const overlayDesc = document.getElementById('overlay-desc');
     const btnRestart = document.getElementById('btn-restart');
-    const scoreEl = document.getElementById('score');
-    const timerEl = document.getElementById('timer');
-    const remainingEl = document.getElementById('remaining');
+    const p1ScoreEl = document.getElementById('p1-score');
+    const p2ScoreEl = document.getElementById('p2-score');
+    const turnIndicator = document.getElementById('turn-indicator');
 
-    const GRID_SIZE = 10;
-    const GAME_DURATION = 60;
-    const PLAYER_START = { row: 0, col: 0 };
+    const GRID = 7;  // 7x7 보드
+    const TURN_LIMIT = 3;  // 3턴 안에 기지 복귀
+    const PLAYER1 = 1, PLAYER2 = 2;
 
-    let grid = [];
-    let playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
-    let score = 0;
-    let remaining = 0;
-    let timeLeft = GAME_DURATION;
-    let gameActive = false;
-    let gameEnded = false;
+    let board = [];  // 0=중립, 1=플레이어1 영역, 2=플레이어2 영역
+    let base1 = {row:0, col:0};
+    let base2 = {row:GRID-1, col:GRID-1};
+    let stonePos = {row:0, col:0};
+    let currentPlayer = PLAYER1;
+    let turnsSinceLeave = 0;
+    let hasLeftBase = false;
+    let gameOver = false;
     let animating = false;
-    let animProgress = 0;
-    let animFrom = { row: 0, col: 0 };
-    let animTo = { row: 0, col: 0 };
-    let cellSize = 0;
-    let gridOffsetX = 0;
-    let gridOffsetY = 0;
-    let dpr = 1;
-    let canvasWidth = 0;
-    let canvasHeight = 0;
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchActive = false;
-    let isSwiping = false;
-    const SWIPE_THRESHOLD = 20;
-    let timerInterval = null;
 
-    function initGrid() {
-        grid = [];
-        for (let r = 0; r < GRID_SIZE; r++) {
-            grid[r] = [];
-            for (let c = 0; c < GRID_SIZE; c++) {
-                grid[r][c] = false;
-            }
-        }
-        grid[PLAYER_START.row][PLAYER_START.col] = true;
-        playerPos = { row: PLAYER_START.row, col: PLAYER_START.col };
-        score = 1;
-        remaining = GRID_SIZE * GRID_SIZE - 1;
-        timeLeft = GAME_DURATION;
-        gameActive = true;
-        gameEnded = false;
-        animating = false;
-        animProgress = 0;
+    let cellSize = 0;
+    let dpr = 1;
+    let canvasW = 0, canvasH = 0;
+
+    function initGame() {
+        board = Array.from({length: GRID}, () => Array(GRID).fill(0));
+        board[base1.row][base1.col] = PLAYER1;
+        board[base2.row][base2.col] = PLAYER2;
+        stonePos = {...base1};
+        currentPlayer = PLAYER1;
+        turnsSinceLeave = 0;
+        hasLeftBase = false;
+        gameOver = false;
         updateHUD();
         overlay.classList.remove('active');
+        draw();
     }
 
     function updateHUD() {
-        scoreEl.textContent = score;
-        timerEl.textContent = Math.ceil(timeLeft);
-        remainingEl.textContent = remaining;
+        let p1Count = 0, p2Count = 0;
+        for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+            if (board[r][c]===PLAYER1) p1Count++;
+            else if (board[r][c]===PLAYER2) p2Count++;
+        }
+        p1ScoreEl.textContent = p1Count;
+        p2ScoreEl.textContent = p2Count;
+        turnIndicator.textContent = currentPlayer===PLAYER1 ? '🟢 내 차례' : '🔴 컴퓨터 차례';
     }
 
     function resizeCanvas() {
-        const wrapper = document.getElementById('canvas-wrapper');
+        const wrapper = document.getElementById('board-wrapper');
         const rect = wrapper.getBoundingClientRect();
         dpr = window.devicePixelRatio || 1;
-        const maxW = rect.width - 4;
-        const maxH = rect.height - 4;
-        const maxSize = Math.min(maxW, maxH);
-        const displaySize = Math.floor(maxSize);
-        canvasWidth = displaySize;
-        canvasHeight = displaySize;
-        canvas.style.width = displaySize + 'px';
-        canvas.style.height = displaySize + 'px';
-        canvas.width = Math.floor(displaySize * dpr);
-        canvas.height = Math.floor(displaySize * dpr);
-        cellSize = displaySize / GRID_SIZE;
-        gridOffsetX = 0;
-        gridOffsetY = 0;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const maxSize = Math.min(rect.width-8, rect.height-8);
+        canvasW = canvasH = Math.floor(maxSize);
+        canvas.style.width = canvasW+'px';
+        canvas.style.height = canvasH+'px';
+        canvas.width = canvasW*dpr;
+        canvas.height = canvasH*dpr;
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        cellSize = canvasW / GRID;
+        draw();
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-        const padding = Math.max(2, cellSize * 0.08);
-        const tileSize = cellSize - padding * 2;
-        const borderRadius = Math.min(6, tileSize * 0.18);
-        ctx.fillStyle = '#16213e';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                const x = c * cellSize + padding;
-                const y = r * cellSize + padding;
-                const isClaimed = grid[r][c];
-                const isPlayerHere = (r === playerPos.row && c === playerPos.col && !animating);
-                ctx.fillStyle = isClaimed ? '#4ecca3' : '#2a2a4a';
-                roundRect(ctx, x, y, tileSize, tileSize, borderRadius);
+        ctx.clearRect(0,0,canvasW,canvasH);
+        // 배경
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0,0,canvasW,canvasH);
+        // 셀
+        for (let r=0; r<GRID; r++) {
+            for (let c=0; c<GRID; c++) {
+                const x = c*cellSize, y = r*cellSize;
+                const pad = cellSize*0.05;
+                const size = cellSize - pad*2;
+                if (board[r][c]===PLAYER1) ctx.fillStyle = '#4ecca3';
+                else if (board[r][c]===PLAYER2) ctx.fillStyle = '#ff6b6b';
+                else ctx.fillStyle = '#2a2a4a';
+                roundRect(ctx, x+pad, y+pad, size, size, 6);
                 ctx.fill();
-                ctx.strokeStyle = isClaimed ? 'rgba(78,204,163,0.6)' : 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                if (isClaimed) {
-                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                    roundRect(ctx, x + tileSize * 0.15, y + tileSize * 0.15, tileSize * 0.7, tileSize * 0.7, borderRadius * 0.7);
+                // 기지 표시
+                if (r===base1.row && c===base1.col) {
+                    ctx.fillStyle = '#ffffff30';
+                    ctx.beginPath();
+                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.25, 0, Math.PI*2);
                     ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `bold ${cellSize*0.4}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('B1', x+cellSize/2, y+cellSize/2);
+                }
+                if (r===base2.row && c===base2.col) {
+                    ctx.fillStyle = '#ffffff30';
+                    ctx.beginPath();
+                    ctx.arc(x+cellSize/2, y+cellSize/2, cellSize*0.25, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `bold ${cellSize*0.4}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('B2', x+cellSize/2, y+cellSize/2);
                 }
             }
         }
-        const px = playerPos.col * cellSize + cellSize / 2;
-        const py = playerPos.row * cellSize + cellSize / 2;
-        const playerRadius = cellSize * 0.32;
-        ctx.shadowColor = 'rgba(255,107,107,0.6)';
-        ctx.shadowBlur = 14;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 3;
+        // 돌 그리기
+        const sx = stonePos.col*cellSize + cellSize/2;
+        const sy = stonePos.row*cellSize + cellSize/2;
+        ctx.shadowColor = 'rgba(255,255,255,0.5)';
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff6b6b';
+        ctx.arc(sx, sy, cellSize*0.3, 0, Math.PI*2);
+        ctx.fillStyle = currentPlayer===PLAYER1 ? '#4ecca3' : '#ff6b6b';
         ctx.fill();
-        ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-        ctx.beginPath();
-        ctx.arc(px - playerRadius * 0.25, py - playerRadius * 0.25, playerRadius * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.stroke();
-        if (animating) {
-            const fromX = animFrom.col * cellSize + cellSize / 2;
-            const fromY = animFrom.row * cellSize + cellSize / 2;
-            const toX = animTo.col * cellSize + cellSize / 2;
-            const toY = animTo.row * cellSize + cellSize / 2;
-            const currentX = fromX + (toX - fromX) * animProgress;
-            const currentY = fromY + (toY - fromY) * animProgress;
-            ctx.shadowColor = 'rgba(255,107,107,0.6)';
-            ctx.shadowBlur = 14;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 3;
-            ctx.beginPath();
-            ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff6b6b';
-            ctx.fill();
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
-            ctx.beginPath();
-            ctx.arc(currentX - playerRadius * 0.25, currentY - playerRadius * 0.25, playerRadius * 0.35, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,255,255,0.45)';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(currentX, currentY, playerRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-        }
     }
 
     function roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.moveTo(x+r, y);
+        ctx.arcTo(x+w, y, x+w, y+h, r);
+        ctx.arcTo(x+w, y+h, x, y+h, r);
+        ctx.arcTo(x, y+h, x, y, r);
+        ctx.arcTo(x, y, x+w, y, r);
         ctx.closePath();
     }
 
-    function tryMove(dr, dc) {
-        if (!gameActive || gameEnded || animating) return;
-        const newRow = playerPos.row + dr;
-        const newCol = playerPos.col + dc;
-        if (newRow < 0 || newRow >= GRID_SIZE || newCol < 0 || newCol >= GRID_SIZE) return;
-        animFrom = { row: playerPos.row, col: playerPos.col };
-        animTo = { row: newRow, col: newCol };
+    // 스와이프 방향으로 돌 튕기기
+    function flickStone(direction) {
+        if (animating || gameOver) return;
+        if (currentPlayer !== PLAYER1) return; // 플레이어 턴만
+
+        let dr=0, dc=0;
+        switch(direction) {
+            case 'up': dr=-1; break;
+            case 'down': dr=1; break;
+            case 'left': dc=-1; break;
+            case 'right': dc=1; break;
+        }
+
+        const newRow = stonePos.row + dr;
+        const newCol = stonePos.col + dc;
+        if (newRow<0||newRow>=GRID||newCol<0||newCol>=GRID) return; // 보드 밖
+
         animating = true;
-        animProgress = 0;
-        const animDuration = 120;
+        const from = {...stonePos};
+        const to = {row:newRow, col:newCol};
         const startTime = performance.now();
+        const duration = 200;
+
         function animateStep(now) {
             const elapsed = now - startTime;
-            animProgress = Math.min(1, elapsed / animDuration);
-            animProgress = animProgress < 0.5 ? 2 * animProgress * animProgress : 1 - Math.pow(-2 * animProgress + 2, 2) / 2;
-            if (animProgress < 1) {
-                requestAnimationFrame(animateStep);
-            } else {
-                animating = false;
-                animProgress = 0;
-                playerPos = { row: newRow, col: newCol };
-                if (!grid[newRow][newCol]) {
-                    grid[newRow][newCol] = true;
-                    score++;
-                    remaining--;
-                    updateHUD();
-                    if (remaining <= 0) endGame(true);
-                }
-            }
+            let t = Math.min(1, elapsed/duration);
+            t = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+            stonePos.row = from.row + (to.row-from.row)*t;
+            stonePos.col = from.col + (to.col-from.col)*t;
             draw();
+            if (t<1) requestAnimationFrame(animateStep);
+            else {
+                stonePos = {...to};
+                animating = false;
+                afterMove();
+            }
         }
         requestAnimationFrame(animateStep);
     }
 
-    function endGame(won = false) {
-        if (gameEnded) return;
-        gameEnded = true;
-        gameActive = false;
-        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-        overlayTitle.textContent = won ? '🎉 완주!' : '⏰ 시간 종료!';
-        overlaySubtitle.textContent = won ? '모든 땅을 차지했어요! 대단해요!' : '획득한 땅을 확인하세요!';
-        finalScoreEl.textContent = score;
-        overlay.classList.add('active');
+    function afterMove() {
+        // 기지 복귀 체크
+        const currentBase = currentPlayer===PLAYER1 ? base1 : base2;
+        if (stonePos.row===currentBase.row && stonePos.col===currentBase.col) {
+            if (hasLeftBase) {
+                // 복귀 성공, 영역 확장 없음 (이미 기지)
+                turnsSinceLeave = 0;
+                hasLeftBase = false;
+                switchTurn();
+            }
+            return;
+        }
+
+        // 영역 확장: 현재 플레이어가 지나간 칸을 자신의 영역으로
+        if (board[stonePos.row][stonePos.col] === 0) {
+            board[stonePos.row][stonePos.col] = currentPlayer;
+        }
+
+        if (!hasLeftBase) {
+            hasLeftBase = true;
+            turnsSinceLeave = 1;
+        } else {
+            turnsSinceLeave++;
+        }
+
+        // 턴 제한 초과 체크
+        if (turnsSinceLeave > TURN_LIMIT) {
+            endGame(false, `${currentPlayer===PLAYER1?'나':'컴퓨터'} 패배! 3턴 안에 기지 복귀 실패`);
+            return;
+        }
+
+        // 턴 종료, 상대에게 넘김
+        switchTurn();
+    }
+
+    function switchTurn() {
+        currentPlayer = currentPlayer===PLAYER1 ? PLAYER2 : PLAYER1;
+        // 돌을 새 플레이어의 기지로 이동
+        stonePos = {...(currentPlayer===PLAYER1 ? base1 : base2)};
+        hasLeftBase = false;
+        turnsSinceLeave = 0;
         updateHUD();
+        draw();
+        if (currentPlayer===PLAYER2 && !gameOver) {
+            // 컴퓨터 턴 자동 실행
+            setTimeout(computerTurn, 800);
+        }
     }
 
-    function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            if (!gameActive || gameEnded) return;
-            timeLeft -= 0.1;
-            if (timeLeft <= 0) { timeLeft = 0; updateHUD(); endGame(false); }
-            else updateHUD();
-        }, 100);
+    function computerTurn() {
+        if (gameOver || currentPlayer!==PLAYER2) return;
+        // 간단한 AI: 무작위 방향으로 한 칸 이동
+        const directions = ['up','down','left','right'];
+        const valid = directions.filter(dir => {
+            let dr=0, dc=0;
+            if(dir==='up') dr=-1; else if(dir==='down') dr=1; else if(dir==='left') dc=-1; else if(dir==='right') dc=1;
+            const nr = stonePos.row+dr, nc = stonePos.col+dc;
+            return nr>=0&&nr<GRID&&nc>=0&&nc<GRID;
+        });
+        if (valid.length===0) return;
+        const dir = valid[Math.floor(Math.random()*valid.length)];
+        // 컴퓨터도 같은 flick 함수 사용 (플레이어 턴 검사 우회)
+        const dr = dir==='up'?-1:dir==='down'?1:0;
+        const dc = dir==='left'?-1:dir==='right'?1:0;
+        const newRow = stonePos.row+dr, newCol = stonePos.col+dc;
+        animating = true;
+        const from = {...stonePos};
+        const to = {row:newRow, col:newCol};
+        const startTime = performance.now();
+        function animateStep(now) {
+            const elapsed = now-startTime;
+            let t = Math.min(1, elapsed/200);
+            t = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+            stonePos.row = from.row+(to.row-from.row)*t;
+            stonePos.col = from.col+(to.col-from.col)*t;
+            draw();
+            if(t<1) requestAnimationFrame(animateStep);
+            else { stonePos={...to}; animating=false; afterMove(); }
+        }
+        requestAnimationFrame(animateStep);
     }
 
-    function getCanvasCoords(clientX, clientY) {
-        const rect = canvas.getBoundingClientRect();
-        return { x: clientX - rect.left, y: clientY - rect.top };
+    function endGame(won, reason) {
+        if (gameOver) return;
+        gameOver = true;
+        overlayTitle.textContent = won ? '🎉 승리!' : '😞 패배';
+        overlayDesc.textContent = reason || '';
+        overlay.classList.add('active');
     }
 
+    // 입력 처리
+    let touchStartX=0, touchStartY=0;
     function handleTouchStart(e) {
-        if (!gameActive || gameEnded) return;
         e.preventDefault();
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        touchActive = true;
-        isSwiping = false;
+        const t = e.touches[0];
+        touchStartX = t.clientX; touchStartY = t.clientY;
     }
-
-    function handleTouchMove(e) {
-        if (!touchActive || !gameActive || gameEnded) { e.preventDefault(); return; }
-        e.preventDefault();
-        const touch = e.touches[0];
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
-            isSwiping = true;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) tryMove(0, 1); else tryMove(0, -1);
-            } else {
-                if (dy > 0) tryMove(1, 0); else tryMove(-1, 0);
-            }
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            isSwiping = false;
-        }
-    }
-
     function handleTouchEnd(e) {
-        if (!touchActive) return;
-        touchActive = false;
-        isSwiping = false;
-        if (!isSwiping && gameActive && !gameEnded && !animating) {
-            const touch = e.changedTouches[0];
-            const coords = getCanvasCoords(touch.clientX, touch.clientY);
-            const col = Math.floor(coords.x / cellSize);
-            const row = Math.floor(coords.y / cellSize);
-            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-                const dr = row - playerPos.row;
-                const dc = col - playerPos.col;
-                if (Math.abs(dr) + Math.abs(dc) === 1) tryMove(dr, dc);
-            }
+        e.preventDefault();
+        if (!touchStartX) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartX;
+        const dy = t.clientY - touchStartY;
+        if (Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            flickStone(dx>0 ? 'right' : 'left');
+        } else {
+            flickStone(dy>0 ? 'down' : 'up');
         }
+        touchStartX=0; touchStartY=0;
     }
-
-    function handleTouchCancel(e) { touchActive = false; isSwiping = false; }
-    function handleMouseDown(e) {
-        if (!gameActive || gameEnded) return;
-        touchStartX = e.clientX;
-        touchStartY = e.clientY;
-        touchActive = true;
-        isSwiping = false;
-    }
-    function handleMouseMove(e) {
-        if (!touchActive || !gameActive || gameEnded) return;
-        const dx = e.clientX - touchStartX;
-        const dy = e.clientY - touchStartY;
-        if (!isSwiping && (Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(dy) > SWIPE_THRESHOLD)) {
-            isSwiping = true;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) tryMove(0, 1); else tryMove(0, -1);
-            } else {
-                if (dy > 0) tryMove(1, 0); else tryMove(-1, 0);
-            }
-            touchStartX = e.clientX;
-            touchStartY = e.clientY;
-            isSwiping = false;
-        }
-    }
-    function handleMouseUp(e) {
-        if (!touchActive) return;
-        touchActive = false;
-        isSwiping = false;
-        if (gameActive && !gameEnded && !animating) {
-            const coords = getCanvasCoords(e.clientX, e.clientY);
-            const col = Math.floor(coords.x / cellSize);
-            const row = Math.floor(coords.y / cellSize);
-            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-                const dr = row - playerPos.row;
-                const dc = col - playerPos.col;
-                if (Math.abs(dr) + Math.abs(dc) === 1) tryMove(dr, dc);
-            }
-        }
-    }
-    function handleMouseLeave(e) { touchActive = false; isSwiping = false; }
-
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('mouseleave', handleMouseLeave);
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    document.addEventListener('keydown', (e) => {
-        if (!gameActive || gameEnded || animating) return;
-        switch (e.key) {
-            case 'ArrowUp': case 'w': case 'W': e.preventDefault(); tryMove(-1, 0); break;
-            case 'ArrowDown': case 's': case 'S': e.preventDefault(); tryMove(1, 0); break;
-            case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); tryMove(0, -1); break;
-            case 'ArrowRight': case 'd': case 'D': e.preventDefault(); tryMove(0, 1); break;
-            case 'r': case 'R': e.preventDefault(); restartGame(); break;
-        }
+    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
+    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
+    canvas.addEventListener('mousedown', (e)=>{ touchStartX=e.clientX; touchStartY=e.clientY; });
+    canvas.addEventListener('mouseup', (e)=>{
+        const dx=e.clientX-touchStartX, dy=e.clientY-touchStartY;
+        if (Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if (Math.abs(dx)>Math.abs(dy)) flickStone(dx>0?'right':'left');
+        else flickStone(dy>0?'down':'up');
+        touchStartX=0; touchStartY=0;
     });
 
-    btnRestart.addEventListener('click', (e) => { e.preventDefault(); restartGame(); });
-    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); restartGame(); });
+    btnRestart.addEventListener('click', ()=>{ initGame(); });
+    btnRestart.addEventListener('touchend', (e)=>{ e.preventDefault(); initGame(); });
 
-    function restartGame() {
-        initGrid();
-        startTimer();
-        draw();
-    }
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', ()=>setTimeout(resizeCanvas, 300));
 
-    window.addEventListener('resize', () => { resizeCanvas(); draw(); });
-    window.addEventListener('orientationchange', () => { setTimeout(() => { resizeCanvas(); draw(); }, 300); });
-
-    function startGame() {
-        resizeCanvas();
-        initGrid();
-        startTimer();
-        draw();
-    }
-
-    startGame();
-    console.log('🏆 땅따먹기 게임 로드 완료!');
+    resizeCanvas();
+    initGame();
+    console.log('🏆 땅따먹기 v2.0 - 돌 튕기기 대전 시작!');
 })();
 </script>
 </body>
