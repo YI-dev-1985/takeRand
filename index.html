@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v8.6</title>
+    <title>땅따먹기 v8.7</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v8.6</div>
+            <div id="version-badge">v8.7</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -115,8 +115,8 @@
     const BASE_SIZE = 80;
     const BALL_RADIUS = 6;
     const WALL_THICKNESS = 3;
-    const FRICTION = 0.98;  // 마찰 감소
-    const MAX_SPEED = 20;    // 속도 증가
+    const FRICTION = 0.99;  // 높은 마찰로 파워 대비 거리 일정
+    const MAX_SPEED = 10;    // 낮은 속도로 정확한 거리
     const MIN_SPEED = 0.2;
     const MAX_SHOTS_PER_TURN = 3;
     const BASE_LOSS_RATIO = 0.5;
@@ -264,7 +264,7 @@
                 gaugeAnimId = null;
                 return;
             }
-            gaugeValueCurrent += gaugeDirection * 0.2;  // 게이지 속도 증가
+            gaugeValueCurrent += gaugeDirection * 0.15;
             if (gaugeValueCurrent >= POWER_MAX) {
                 gaugeValueCurrent = POWER_MAX;
                 gaugeDirection = -1;
@@ -548,19 +548,17 @@
         draw();
         setTimeout(() => {
             if (!gameOver) endTurn(false);
-        }, 300);  // 0.3초로 단축
+        }, 300);
     }
 
     function checkEndOfShot() {
-        // 내 영역 안에 정지하면 이전 라인 삭제
         if (isInsideMyTerritory(ball.x, ball.y)) {
             if (hasLeftBase) {
                 acquireTerritory();
-                draw();
+                draw();  // 영역 획득 즉시 화면 갱신
                 showSuccessToast();
                 endTurn(true);
             } else {
-                // 기지에서 나가지 않은 상태로 내 영역에 정지 → 라인 삭제
                 tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
                 pathPoints = [];
                 draw();
@@ -698,7 +696,7 @@
             if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
                 ball.y = y;
-                draw();
+                draw();  // 위치 변경 즉시 반영
                 updateHUD();
             }
             return;
@@ -811,7 +809,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v8.6 - 빠른 볼 & 라인 삭제');
+    console.log('🏆 땅따먹기 v8.7 - P1 영역 색 & 위치 지정 & 파워 거리');
 })();
 </script>
 </body>
