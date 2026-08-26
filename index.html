@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v6.0</title>
+    <title>땅따먹기 v6.1</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v6.0</div>
+            <div id="version-badge">v6.1</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -116,6 +116,7 @@
     const MAX_SHOTS_PER_TURN = 3;
     const WIN_THRESHOLD = 0.01;
     const POWER_MAX = 10;
+    const SAFE_DIST_FROM_START = BALL_RADIUS * 3;  // 출발점 주변 이 거리 내 벽은 무시
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -126,7 +127,7 @@
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
-    let shotsFired = 0;  // 이번 턴에 발사한 횟수 (첫 발사 = 0에서 1로)
+    let shotsFired = 0;
     let hasLeftBase = false;
     let gameOver = false;
     let turnInProgress = false;
@@ -398,7 +399,7 @@
         ball.vy = Math.sin(aimAngle) * speed;
         ball.moving = true;
         shotsLeft--;
-        shotsFired++;  // 발사 횟수 증가
+        shotsFired++;
         isAiming = false;
         stopGaugeAnimation();
         btnFire.disabled = true;
@@ -437,7 +438,7 @@
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
 
-        // 첫 발사(shotsFired === 1)에서는 실패 검사 생략
+        // 실패 검사: 첫 발사 이후(shotsFired > 1)에만 검사
         if (shotsFired > 1) {
             if (checkFailure(prevX, prevY, ball.x, ball.y)) {
                 ball.moving = false;
@@ -462,18 +463,27 @@
     }
 
     function checkFailure(x1, y1, x2, y2) {
+        // 시작점으로부터 안전 거리 내의 벽은 무시 (출발 지점 근처 벽 때문에 실패 방지)
+        const safeDistSq = SAFE_DIST_FROM_START * SAFE_DIST_FROM_START;
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 1; i < steps; i++) {  // 시작점 제외
+        for (let i = 1; i < steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideCurrentBase(px, py)) continue; // 기지 내부는 통과
+            // 기지 내부는 통과
+            if (isInsideCurrentBase(px, py)) continue;
+            // 출발점 근처는 벽 검사 제외
+            const dx0 = px - x1, dy0 = py - y1;
+            if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
+
             const idx = py * BOARD_W + px;
+            // 내 영역 진입 검사
             if (territoryMap[idx] === currentPlayer) {
-                return true;  // 내 영역 진입
+                return true;
             }
+            // 벽 교차 검사
             if (wallMap[idx] === 1 || tempWallMap[idx] === 1) {
-                return true;  // 벽 교차
+                return true;
             }
         }
         return false;
@@ -481,7 +491,7 @@
 
     function paintTrailToTemp(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
-        for (let i = 0; i <= steps; i++) {  // 시작점과 끝점 모두 포함
+        for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
@@ -793,7 +803,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v6.0 - 첫 발사 실패 조건 제거');
+    console.log('🏆 땅따먹기 v6.1 - 두 번째 발사 실패 수정');
 })();
 </script>
 </body>
