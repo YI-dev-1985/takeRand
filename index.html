@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v5.5 - 게이지 발사</title>
+    <title>땅따먹기 v5.6 - 실패 조건 개선</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v5.5</div>
+            <div id="version-badge">v5.6</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -110,7 +110,7 @@
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
     const WIN_THRESHOLD = 0.01;
-    const POWER_MAX = 10;  // 0~10 게이지
+    const POWER_MAX = 10;
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -129,17 +129,15 @@
 
     let ball = { x: BOARD_W/2, y: 150, vx: 0, vy: 0, moving: false };
 
-    // 방향 설정 상태
     let isAiming = false;
     let aimStartX = 0, aimStartY = 0;
     let aimCurrentX = 0, aimCurrentY = 0;
     let aimAngle = 0;
-    let aimPower = 5; // 기본값
+    let aimPower = 5;
 
-    // 게이지 애니메이션
     let gaugeAnimId = null;
-    let gaugeDirection = 1; // 1: 증가, -1: 감소
-    let gaugeValueCurrent = 5; // 0~10
+    let gaugeDirection = 1;
+    let gaugeValueCurrent = 5;
 
     let canvasW = 0, canvasH = 0;
     let dpr = 1;
@@ -230,7 +228,7 @@
                 gaugeAnimId = null;
                 return;
             }
-            gaugeValueCurrent += gaugeDirection * 0.15; // 속도 조절
+            gaugeValueCurrent += gaugeDirection * 0.15;
             if (gaugeValueCurrent >= POWER_MAX) {
                 gaugeValueCurrent = POWER_MAX;
                 gaugeDirection = -1;
@@ -324,7 +322,6 @@
         drawBase(offCtx, BOARD_W/2, 150, BASE_RADIUS, '나', P1);
         drawBase(offCtx, BOARD_W/2, BOARD_H-150, BASE_RADIUS, '컴', P2);
 
-        // 돌
         offCtx.shadowColor = 'rgba(255,255,255,0.7)';
         offCtx.shadowBlur = 16;
         offCtx.beginPath();
@@ -340,7 +337,6 @@
         offCtx.fillStyle = 'rgba(255,255,255,0.6)';
         offCtx.fill();
 
-        // 조준선 그리기
         if (isAiming && !ball.moving && !gameOver && turnInProgress && !placingStone) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
@@ -359,7 +355,6 @@
             }
         }
 
-        // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
             offCtx.strokeStyle = 'rgba(255,255,255,0.8)';
             offCtx.lineWidth = 4;
@@ -392,7 +387,7 @@
 
     function launchBall() {
         if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingStone || failed || !isAiming) return;
-        const power = gaugeValueCurrent / POWER_MAX; // 0~1
+        const power = gaugeValueCurrent / POWER_MAX;
         const speed = power * MAX_SPEED;
         ball.vx = Math.cos(aimAngle) * speed;
         ball.vy = Math.sin(aimAngle) * speed;
@@ -450,6 +445,13 @@
         draw();
     }
 
+    function isInsideCurrentBase(x, y) {
+        const baseX = BOARD_W/2;
+        const baseY = currentPlayer === P1 ? 150 : BOARD_H-150;
+        const dx = x - baseX, dy = y - baseY;
+        return (dx*dx + dy*dy) <= BASE_RADIUS * BASE_RADIUS;
+    }
+
     function checkFailureDuringMove(x1, y1, x2, y2) {
         const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
         for (let i = 1; i < steps; i++) {
@@ -457,6 +459,9 @@
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
             const idx = py * BOARD_W + px;
+            // 현재 플레이어 기지 내부는 실패하지 않음
+            if (isInsideCurrentBase(px, py)) continue;
+            // 상대 영역이거나 벽이면 실패
             if (territoryMap[idx] !== NEUTRAL && territoryMap[idx] !== currentPlayer) {
                 return true;
             }
@@ -473,6 +478,8 @@
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
+            // 기지 내부에는 벽을 칠하지 않음
+            if (isInsideCurrentBase(px, py)) continue;
             for (let dy = -BALL_RADIUS+3; dy <= BALL_RADIUS-3; dy++) {
                 for (let dx = -BALL_RADIUS+3; dx <= BALL_RADIUS-3; dx++) {
                     const nx = px + dx;
@@ -522,7 +529,6 @@
                 updateHUD();
                 draw();
             } else {
-                // 컴퓨터 턴
                 setTimeout(computerTurn, 800);
             }
         }
@@ -655,7 +661,6 @@
         };
     }
 
-    // 플레이어 입력 처리
     function handleTouchStart(e) {
         e.preventDefault();
         if (gameOver || ball.moving || !turnInProgress) return;
@@ -677,7 +682,6 @@
             return;
         }
 
-        // 발사 후 돌이 멈춘 상태에서 다시 조준 가능
         if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
             if (distToBall < BALL_RADIUS * 3) {
@@ -709,7 +713,6 @@
         // 발사는 버튼으로만
     }
 
-    // 마우스 지원
     function handleMouseDown(e) {
         if (gameOver || ball.moving || !turnInProgress) return;
         const { x, y } = getBoardCoords(e.clientX, e.clientY);
@@ -763,13 +766,7 @@
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('mouseleave', () => {
-        if (isAiming) {
-            // 드래그 중 벗어나면 조준 취소하지 않고 유지 (버튼으로 발사)
-        }
-    });
 
-    // 발사 버튼
     btnFire.addEventListener('click', () => {
         if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
             launchBall();
@@ -790,7 +787,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v5.5 - 게이지 발사 시스템');
+    console.log('🏆 땅따먹기 v5.6 - 실패 조건 개선');
 })();
 </script>
 </body>
