@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v7.1</title>
+    <title>땅따먹기 v7.2</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -56,7 +56,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v7.1</div>
+            <div id="version-badge">v7.2</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -102,13 +102,13 @@
     const successToast = document.getElementById('success-toast');
 
     // 게임 설정
-    const BOARD_W = 1000;
-    const BOARD_H = 600;
-    const BASE_RADIUS = 50;
-    const BALL_RADIUS = 7;
+    const BOARD_W = 800;
+    const BOARD_H = 500;
+    const BASE_SIZE = 80;  // 사각형 기지 크기 (가로=세로)
+    const BALL_RADIUS = 6;
     const WALL_THICKNESS = 3;
     const FRICTION = 0.985;
-    const MAX_SPEED = 15;
+    const MAX_SPEED = 14;
     const MIN_SPEED = 0.3;
     const MAX_SHOTS_PER_TURN = 3;
     const BASE_LOSS_RATIO = 0.5;
@@ -118,13 +118,14 @@
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    const BASE1_X = BOARD_W/2, BASE1_Y = 90;
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 90;
+    const BASE1_X = BOARD_W/2, BASE1_Y = 70;
+    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - 70;
     const TOTAL_AREA = BOARD_W * BOARD_H;
 
     let territoryMap = null;
     let wallMap = null;
     let tempWallMap = null;
+    let pathPoints = [];  // 이번 턴 이동 경로 저장
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS_PER_TURN;
@@ -155,18 +156,16 @@
         territoryMap = new Uint8Array(BOARD_W * BOARD_H);
         wallMap = new Uint8Array(BOARD_W * BOARD_H);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
-        fillCircleToMap(territoryMap, BASE1_X, BASE1_Y, BASE_RADIUS, P1);
-        fillCircleToMap(territoryMap, BASE2_X, BASE2_Y, BASE_RADIUS, P2);
+        pathPoints = [];
+        fillRectToMap(territoryMap, BASE1_X - BASE_SIZE/2, BASE1_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P1);
+        fillRectToMap(territoryMap, BASE2_X - BASE_SIZE/2, BASE2_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P2);
     }
 
-    function fillCircleToMap(map, cx, cy, radius, owner) {
-        const r2 = radius * radius;
-        for (let y = Math.floor(cy-radius); y <= Math.ceil(cy+radius); y++) {
-            for (let x = Math.floor(cx-radius); x <= Math.ceil(cx+radius); x++) {
-                if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
-                const dx = x-cx, dy = y-cy;
-                if (dx*dx + dy*dy <= r2) {
-                    map[y*BOARD_W + x] = owner;
+    function fillRectToMap(map, x, y, w, h, owner) {
+        for (let r = Math.floor(y); r < Math.ceil(y+h); r++) {
+            for (let c = Math.floor(x); c < Math.ceil(x+w); c++) {
+                if (c >= 0 && c < BOARD_W && r >= 0 && r < BOARD_H) {
+                    map[r * BOARD_W + c] = owner;
                 }
             }
         }
@@ -189,6 +188,7 @@
         placingStone = (currentPlayer === P1);
         failed = false;
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        pathPoints = [];
         isAiming = false;
         gaugeValueCurrent = 5;
         updateHUD();
@@ -313,37 +313,33 @@
             }
         }
 
-        // 기지 (원형 유지 - 화면 비율 보정)
-        const scaleFactor = Math.min(cellW, cellH); // 정사각형 유지
+        // 기지 (사각형)
+        const scaleFactor = Math.min(cellW, cellH);
         const base1ScreenX = BASE1_X * cellW;
         const base1ScreenY = BASE1_Y * cellH;
-        const base1ScreenR = BASE_RADIUS * scaleFactor;
+        const base1ScreenSize = BASE_SIZE * scaleFactor;
 
         const base2ScreenX = BASE2_X * cellW;
         const base2ScreenY = BASE2_Y * cellH;
-        const base2ScreenR = BASE_RADIUS * scaleFactor;
+        const base2ScreenSize = BASE_SIZE * scaleFactor;
 
-        // P1 기지
-        ctx.fillStyle = 'rgba(78, 204, 163, 0.7)';
-        ctx.beginPath();
-        ctx.arc(base1ScreenX, base1ScreenY, base1ScreenR, 0, Math.PI*2);
-        ctx.fill();
+        // P1 기지 (사각형)
+        ctx.fillStyle = 'rgba(78, 204, 163, 0.8)';
+        ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
         ctx.strokeStyle = '#4ecca3';
         ctx.lineWidth = 3;
-        ctx.stroke();
+        ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
 
-        // P2 기지
-        ctx.fillStyle = 'rgba(255, 107, 107, 0.7)';
-        ctx.beginPath();
-        ctx.arc(base2ScreenX, base2ScreenY, base2ScreenR, 0, Math.PI*2);
-        ctx.fill();
+        // P2 기지 (사각형)
+        ctx.fillStyle = 'rgba(255, 107, 107, 0.8)';
+        ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
         ctx.strokeStyle = '#ff6b6b';
         ctx.lineWidth = 3;
-        ctx.stroke();
+        ctx.strokeRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
 
         // 기지 텍스트
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 24px -apple-system, sans-serif';
+        ctx.font = 'bold 22px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('나', base1ScreenX, base1ScreenY);
@@ -376,7 +372,7 @@
                 ctx.setLineDash([6, 6]);
                 ctx.beginPath();
                 ctx.moveTo(ballScreenX, ballScreenY);
-                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*50*scaleFactor, ballScreenY + Math.sin(aimAngle)*50*scaleFactor);
+                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*40*scaleFactor, ballScreenY + Math.sin(aimAngle)*40*scaleFactor);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
@@ -384,12 +380,13 @@
 
         // 배치 단계 표시
         if (placingStone && !ball.moving && !gameOver) {
+            const baseScreenX = BOARD_W/2 * cellW;
+            const baseScreenY = (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH;
+            const baseScreenSize = BASE_SIZE * scaleFactor;
             ctx.strokeStyle = 'rgba(255,255,255,0.9)';
             ctx.lineWidth = 3;
             ctx.setLineDash([8, 8]);
-            ctx.beginPath();
-            ctx.arc(BOARD_W/2 * cellW, (currentPlayer === P1 ? BASE1_Y : BASE2_Y) * cellH, BASE_RADIUS * scaleFactor, 0, Math.PI*2);
-            ctx.stroke();
+            ctx.strokeRect(baseScreenX - baseScreenSize/2, baseScreenY - baseScreenSize/2, baseScreenSize, baseScreenSize);
             ctx.setLineDash([]);
         }
     }
@@ -418,6 +415,7 @@
         if (speed < MIN_SPEED) {
             ball.moving = false;
             ball.vx = 0; ball.vy = 0;
+            pathPoints.push({x: ball.x, y: ball.y});
             checkEndOfShot();
             return;
         }
@@ -459,8 +457,7 @@
     function isInsideCurrentBase(x, y) {
         const baseX = BOARD_W/2;
         const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-        const dx = x - baseX, dy = y - baseY;
-        return (dx*dx + dy*dy) <= BASE_RADIUS * BASE_RADIUS;
+        return Math.abs(x - baseX) <= BASE_SIZE/2 && Math.abs(y - baseY) <= BASE_SIZE/2;
     }
 
     function checkFailure(x1, y1, x2, y2) {
@@ -505,6 +502,7 @@
         turnInProgress = false;
         if (animId) cancelAnimationFrame(animId);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        pathPoints = [];
         isAiming = false;
         stopGaugeAnimation();
         btnFire.disabled = true;
@@ -520,14 +518,14 @@
         const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         const distToBase = Math.sqrt((ball.x-baseX)*(ball.x-baseX) + (ball.y-baseY)*(ball.y-baseY));
 
-        if (hasLeftBase && distToBase <= BASE_RADIUS) {
+        if (hasLeftBase && isInsideCurrentBase(ball.x, ball.y)) {
             acquireTerritory();
             showSuccessToast();
             endTurn(true);
         } else if (shotsLeft <= 0) {
             endTurn(false);
         } else {
-            if (!hasLeftBase && distToBase > BASE_RADIUS) {
+            if (!hasLeftBase && !isInsideCurrentBase(ball.x, ball.y)) {
                 hasLeftBase = true;
             }
             turnInProgress = true;
@@ -550,49 +548,46 @@
     }
 
     function acquireTerritory() {
+        // 벽을 영구 벽으로 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
-        const visited = new Uint8Array(BOARD_W * BOARD_H);
-        const queue = [];
-        const startX = Math.floor(BASE1_X);
-        const startY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-        const startIdx = startY * BOARD_W + startX;
-        visited[startIdx] = 1;
-        queue.push(startIdx);
 
-        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-        while (queue.length > 0) {
-            const idx = queue.shift();
-            const x = idx % BOARD_W;
-            const y = Math.floor(idx / BOARD_W);
-            for (const [dx, dy] of dirs) {
-                const nx = x + dx;
-                const ny = y + dy;
-                if (nx < 0 || nx >= BOARD_W || ny < 0 || ny >= BOARD_H) continue;
-                const nIdx = ny * BOARD_W + nx;
-                if (visited[nIdx]) continue;
-                if (wallMap[nIdx] === 1) continue;
-                if (territoryMap[nIdx] !== NEUTRAL && territoryMap[nIdx] !== currentPlayer) continue;
-                visited[nIdx] = 1;
-                queue.push(nIdx);
-            }
+        // 경로 포인트로 다각형을 만들어 내부 채우기
+        if (pathPoints.length >= 3) {
+            const polygon = pathPoints.map(p => ({x: p.x, y: p.y}));
+            fillPolygon(polygon, currentPlayer);
         }
 
-        const opponentBaseX = currentPlayer === P1 ? BASE2_X : BASE1_X;
-        const opponentBaseY = currentPlayer === P1 ? BASE2_Y : BASE1_Y;
-        const opponentBaseR2 = BASE_RADIUS * BASE_RADIUS;
-
-        for (let i = 0; i < territoryMap.length; i++) {
-            if (!visited[i]) {
-                const x = i % BOARD_W;
-                const y = Math.floor(i / BOARD_W);
-                const dx = x - opponentBaseX, dy = y - opponentBaseY;
-                if (dx*dx + dy*dy <= opponentBaseR2) continue;
-                territoryMap[i] = currentPlayer;
-            }
-        }
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        pathPoints = [];
+    }
+
+    function fillPolygon(polygon, owner) {
+        const minX = Math.max(0, Math.floor(Math.min(...polygon.map(p => p.x))));
+        const maxX = Math.min(BOARD_W - 1, Math.ceil(Math.max(...polygon.map(p => p.x))));
+        const minY = Math.max(0, Math.floor(Math.min(...polygon.map(p => p.y))));
+        const maxY = Math.min(BOARD_H - 1, Math.ceil(Math.max(...polygon.map(p => p.y))));
+
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                if (isPointInPolygon(x, y, polygon)) {
+                    territoryMap[y * BOARD_W + x] = owner;
+                }
+            }
+        }
+    }
+
+    function isPointInPolygon(x, y, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x, yi = polygon[i].y;
+            const xj = polygon[j].x, yj = polygon[j].y;
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 
     function endTurn(success) {
@@ -603,30 +598,25 @@
         if (!success) {
             tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         }
+        pathPoints = [];
         isAiming = false;
         stopGaugeAnimation();
         btnFire.disabled = true;
         updateHUD();
 
         let p1BaseLost = 0, p2BaseLost = 0;
-        const baseArea = Math.PI * BASE_RADIUS * BASE_RADIUS;
+        const baseArea = BASE_SIZE * BASE_SIZE;
 
-        for (let y = Math.floor(BASE1_Y - BASE_RADIUS); y <= Math.ceil(BASE1_Y + BASE_RADIUS); y++) {
-            for (let x = Math.floor(BASE1_X - BASE_RADIUS); x <= Math.ceil(BASE1_X + BASE_RADIUS); x++) {
+        for (let y = Math.floor(BASE1_Y - BASE_SIZE/2); y <= Math.ceil(BASE1_Y + BASE_SIZE/2); y++) {
+            for (let x = Math.floor(BASE1_X - BASE_SIZE/2); x <= Math.ceil(BASE1_X + BASE_SIZE/2); x++) {
                 if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
-                const dx = x - BASE1_X, dy = y - BASE1_Y;
-                if (dx*dx + dy*dy <= BASE_RADIUS * BASE_RADIUS) {
-                    if (territoryMap[y*BOARD_W + x] !== P1) p1BaseLost++;
-                }
+                if (territoryMap[y*BOARD_W + x] !== P1) p1BaseLost++;
             }
         }
-        for (let y = Math.floor(BASE2_Y - BASE_RADIUS); y <= Math.ceil(BASE2_Y + BASE_RADIUS); y++) {
-            for (let x = Math.floor(BASE2_X - BASE_RADIUS); x <= Math.ceil(BASE2_X + BASE_RADIUS); x++) {
+        for (let y = Math.floor(BASE2_Y - BASE_SIZE/2); y <= Math.ceil(BASE2_Y + BASE_SIZE/2); y++) {
+            for (let x = Math.floor(BASE2_X - BASE_SIZE/2); x <= Math.ceil(BASE2_X + BASE_SIZE/2); x++) {
                 if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
-                const dx = x - BASE2_X, dy = y - BASE2_Y;
-                if (dx*dx + dy*dy <= BASE_RADIUS * BASE_RADIUS) {
-                    if (territoryMap[y*BOARD_W + x] !== P2) p2BaseLost++;
-                }
+                if (territoryMap[y*BOARD_W + x] !== P2) p2BaseLost++;
             }
         }
 
@@ -704,124 +694,3 @@
         if (placingStone && currentPlayer === P1) {
             const baseX = BOARD_W/2;
             const baseY = BASE1_Y;
-            const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
-            if (dist <= BASE_RADIUS - BALL_RADIUS) {
-                ball.x = x;
-                ball.y = y;
-                placingStone = false;
-                updateHUD();
-                draw();
-                btnFire.disabled = false;
-            }
-            return;
-        }
-
-        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
-            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 3) {
-                isAiming = true;
-                aimStartX = x;
-                aimStartY = y;
-                aimCurrentX = x;
-                aimCurrentY = y;
-                btnFire.disabled = false;
-                startGaugeAnimation();
-                updateHUD();
-                draw();
-            }
-        }
-    }
-
-    function handleTouchMove(e) {
-        e.preventDefault();
-        if (!isAiming) return;
-        const touch = e.touches[0];
-        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
-        aimCurrentX = x;
-        aimCurrentY = y;
-        draw();
-    }
-
-    function handleTouchEnd(e) {
-        e.preventDefault();
-    }
-
-    function handleMouseDown(e) {
-        if (gameOver || ball.moving || !turnInProgress) return;
-        const { x, y } = getBoardCoords(e.clientX, e.clientY);
-        if (placingStone && currentPlayer === P1) {
-            const baseX = BOARD_W/2;
-            const baseY = BASE1_Y;
-            const dist = Math.sqrt((x-baseX)*(x-baseX) + (y-baseY)*(y-baseY));
-            if (dist <= BASE_RADIUS - BALL_RADIUS) {
-                ball.x = x;
-                ball.y = y;
-                placingStone = false;
-                updateHUD();
-                draw();
-                btnFire.disabled = false;
-            }
-            return;
-        }
-        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
-            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 3) {
-                isAiming = true;
-                aimStartX = x;
-                aimStartY = y;
-                aimCurrentX = x;
-                aimCurrentY = y;
-                btnFire.disabled = false;
-                startGaugeAnimation();
-                updateHUD();
-                draw();
-            }
-        }
-    }
-
-    function handleMouseMove(e) {
-        if (!isAiming) return;
-        const { x, y } = getBoardCoords(e.clientX, e.clientY);
-        aimCurrentX = x;
-        aimCurrentY = y;
-        draw();
-    }
-
-    function handleMouseUp(e) {
-        // 발사는 버튼으로만
-    }
-
-    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
-    canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
-    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
-    canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
-
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', handleMouseUp);
-
-    btnFire.addEventListener('click', () => {
-        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
-            launchBall();
-        }
-    });
-    btnFire.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
-            launchBall();
-        }
-    });
-
-    btnRestart.addEventListener('click', () => { initGame(); });
-    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
-
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
-
-    resizeCanvas();
-    initGame();
-    console.log('🏆 땅따먹기 v7.1 - 기지 원형 & 성공 메시지');
-})();
-</script>
-</body>
-</html>
