@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v8.0</title>
+    <title>땅따먹기 v8.1</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -14,6 +14,8 @@
             --wall: #8888aa;
             --accent: #e94560;
             --button: #ffd700;
+            --confirm: #4ecca3;
+            --cancel: #ff6b6b;
         }
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
         html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
@@ -32,14 +34,17 @@
         #overlay-desc { color:#ccc; margin-bottom:10px; text-align:center; padding:0 12px; font-size:14px; }
         #btn-restart { padding:10px 28px; font-size:16px; font-weight:700; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
-        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; }
-        #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; }
+        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; flex-wrap:wrap; }
+        #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; min-width:120px; }
         #gauge-bar-bg { flex:1; height:14px; background:#333; border-radius:7px; overflow:hidden; }
         #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:7px; }
         #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
-        #btn-fire { padding:8px 24px; font-size:18px; font-weight:900; border:none; border-radius:25px; background:var(--button); color:#000; cursor:pointer; }
-        #btn-fire:active { transform:scale(0.95); }
-        #btn-fire:disabled { background:#555; color:#999; }
+        .btn { padding:8px 18px; font-size:16px; font-weight:900; border:none; border-radius:20px; cursor:pointer; }
+        .btn:active { transform:scale(0.95); }
+        .btn:disabled { background:#555; color:#999; }
+        #btn-confirm { background:var(--confirm); color:#fff; }
+        #btn-cancel { background:var(--cancel); color:#fff; }
+        #btn-fire { background:var(--button); color:#000; padding:8px 24px; font-size:18px; }
         #instructions { color:#777; font-size:10px; text-align:center; }
         #success-toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(78,204,163,0.9); color:#fff; padding:16px 32px; border-radius:16px; font-size:24px; font-weight:900; z-index:20; pointer-events:none; opacity:0; transition:opacity 0.3s; }
     </style>
@@ -56,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v8.0</div>
+            <div id="version-badge">v8.1</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -81,9 +86,11 @@
             <div id="gauge-bar-bg"><div id="gauge-bar"></div></div>
             <span id="gauge-value">5.0</span>
         </div>
-        <button id="btn-fire">🚀 발사</button>
+        <button class="btn" id="btn-confirm">✅ 위치 완료</button>
+        <button class="btn" id="btn-cancel">🔄 재설정</button>
+        <button class="btn" id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 내 영역 아무 곳이나 터치하여 공 배치 → 드래그로 방향 → 발사 (최대 3회)</div>
+    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 공 근처 드래그 → 발사</div>
 </div>
 <script>
 (function() {
@@ -99,6 +106,8 @@
     const gaugeBar = document.getElementById('gauge-bar');
     const gaugeValue = document.getElementById('gauge-value');
     const btnFire = document.getElementById('btn-fire');
+    const btnConfirm = document.getElementById('btn-confirm');
+    const btnCancel = document.getElementById('btn-cancel');
     const successToast = document.getElementById('success-toast');
 
     // 게임 설정
@@ -133,7 +142,8 @@
     let hasLeftBase = false;
     let gameOver = false;
     let turnInProgress = false;
-    let canPlaceStone = true;  // 공 배치 가능 여부
+    let placingMode = true;      // true: 공 배치 모드, false: 발사 모드
+    let positionConfirmed = false;  // 위치 확정 여부
     let failed = false;
 
     let ball = { x: BASE1_X, y: BASE1_Y, vx: 0, vy: 0, moving: false };
@@ -185,7 +195,8 @@
         shotsFired = 0;
         hasLeftBase = false;
         turnInProgress = true;
-        canPlaceStone = true;
+        placingMode = true;
+        positionConfirmed = false;
         failed = false;
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
@@ -193,7 +204,7 @@
         gaugeValueCurrent = 5;
         updateHUD();
         updateGaugeUI();
-        btnFire.disabled = true;
+        updateButtons();
     }
 
     function initGame() {
@@ -208,6 +219,22 @@
         draw();
     }
 
+    function updateButtons() {
+        if (placingMode) {
+            btnConfirm.disabled = false;
+            btnCancel.disabled = true;
+            btnFire.disabled = true;
+        } else if (isAiming) {
+            btnConfirm.disabled = true;
+            btnCancel.disabled = true;
+            btnFire.disabled = false;
+        } else {
+            btnConfirm.disabled = true;
+            btnCancel.disabled = false;
+            btnFire.disabled = false;
+        }
+    }
+
     function updateHUD() {
         let p1Count = 0, p2Count = 0;
         for (let i = 0; i < territoryMap.length; i++) {
@@ -218,7 +245,7 @@
         p2ScoreEl.textContent = Math.round(p2Count / TOTAL_AREA * 100) + '%';
         const playerName = currentPlayer === P1 ? '🟢 P1' : '🔴 P2';
         let status = '';
-        if (canPlaceStone) status = ' 공 배치: 내 영역 터치';
+        if (placingMode) status = ' 공 배치: 내 영역 터치';
         else if (failed) status = ' 실패!';
         else if (isAiming) status = ' 방향 설정 중';
         else status = ` 남은 발사: ${shotsLeft}`;
@@ -352,7 +379,8 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        if (isAiming && !ball.moving && !gameOver && turnInProgress && !canPlaceStone) {
+        // 조준선 (발사 모드에서만)
+        if (isAiming && !placingMode && !ball.moving && !gameOver) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
             const len = Math.sqrt(dx*dx + dy*dy);
@@ -369,7 +397,8 @@
             }
         }
 
-        if (canPlaceStone && !ball.moving && !gameOver) {
+        // 배치 모드 표시
+        if (placingMode && !ball.moving && !gameOver) {
             ctx.strokeStyle = 'rgba(255,255,255,0.5)';
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 4]);
@@ -380,8 +409,29 @@
         }
     }
 
+    function confirmPosition() {
+        if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
+        placingMode = false;
+        positionConfirmed = true;
+        isAiming = false;
+        updateHUD();
+        updateButtons();
+        draw();
+    }
+
+    function cancelPosition() {
+        if (placingMode || ball.moving || gameOver || !turnInProgress) return;
+        placingMode = true;
+        positionConfirmed = false;
+        isAiming = false;
+        stopGaugeAnimation();
+        updateHUD();
+        updateButtons();
+        draw();
+    }
+
     function launchBall() {
-        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || canPlaceStone || failed || !isAiming) return;
+        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingMode || failed || !isAiming) return;
         const power = gaugeValueCurrent / POWER_MAX;
         const speed = power * MAX_SPEED;
         ball.vx = Math.cos(aimAngle) * speed;
@@ -391,7 +441,7 @@
         shotsFired++;
         isAiming = false;
         stopGaugeAnimation();
-        btnFire.disabled = true;
+        updateButtons();
         updateHUD();
         moveBall();
     }
@@ -441,12 +491,6 @@
         paintTrailToTemp(prevX, prevY, ball.x, ball.y);
         animId = requestAnimationFrame(moveBall);
         draw();
-    }
-
-    function isInsideCurrentBase(x, y) {
-        const baseX = BOARD_W/2;
-        const baseY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-        return Math.abs(x - baseX) <= BASE_SIZE/2 && Math.abs(y - baseY) <= BASE_SIZE/2;
     }
 
     function isInsideMyTerritory(x, y) {
@@ -501,7 +545,7 @@
         pathPoints = [];
         isAiming = false;
         stopGaugeAnimation();
-        btnFire.disabled = true;
+        updateButtons();
         updateHUD();
         draw();
         setTimeout(() => {
@@ -521,9 +565,8 @@
                 hasLeftBase = true;
             }
             turnInProgress = true;
-            canPlaceStone = false;
             isAiming = false;
-            btnFire.disabled = false;
+            updateButtons();
             updateHUD();
             draw();
         }
@@ -586,7 +629,7 @@
         pathPoints = [];
         isAiming = false;
         stopGaugeAnimation();
-        btnFire.disabled = true;
+        updateButtons();
         updateHUD();
 
         let p1BaseLost = 0, p2BaseLost = 0;
@@ -641,8 +684,7 @@
         const touch = e.touches[0];
         const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
 
-        // 공 배치 모드: 내 영역 아무 곳이나 터치
-        if (canPlaceStone) {
+        if (placingMode) {
             if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
                 ball.y = y;
@@ -652,7 +694,6 @@
             return;
         }
 
-        // 발사 모드: 공 근처에서 드래그
         if (turnInProgress && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
             if (distToBall < BALL_RADIUS * 3) {
@@ -661,7 +702,7 @@
                 aimStartY = y;
                 aimCurrentX = x;
                 aimCurrentY = y;
-                btnFire.disabled = false;
+                updateButtons();
                 startGaugeAnimation();
                 updateHUD();
                 draw();
@@ -687,7 +728,7 @@
         if (gameOver || ball.moving || !turnInProgress) return;
         const { x, y } = getBoardCoords(e.clientX, e.clientY);
 
-        if (canPlaceStone) {
+        if (placingMode) {
             if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
                 ball.y = y;
@@ -705,7 +746,7 @@
                 aimStartY = y;
                 aimCurrentX = x;
                 aimCurrentY = y;
-                btnFire.disabled = false;
+                updateButtons();
                 startGaugeAnimation();
                 updateHUD();
                 draw();
@@ -734,14 +775,20 @@
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
 
+    btnConfirm.addEventListener('click', confirmPosition);
+    btnConfirm.addEventListener('touchend', (e) => { e.preventDefault(); confirmPosition(); });
+
+    btnCancel.addEventListener('click', cancelPosition);
+    btnCancel.addEventListener('touchend', (e) => { e.preventDefault(); cancelPosition(); });
+
     btnFire.addEventListener('click', () => {
-        if (isAiming && !ball.moving && turnInProgress && !canPlaceStone && !failed) {
+        if (isAiming && !ball.moving && turnInProgress && !placingMode && !failed) {
             launchBall();
         }
     });
     btnFire.addEventListener('touchend', (e) => {
         e.preventDefault();
-        if (isAiming && !ball.moving && turnInProgress && !canPlaceStone && !failed) {
+        if (isAiming && !ball.moving && turnInProgress && !placingMode && !failed) {
             launchBall();
         }
     });
@@ -754,7 +801,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v8.0 - 내 영역 어디서든 발사');
+    console.log('🏆 땅따먹기 v8.1 - 위치 지정 완료/취소');
 })();
 </script>
 </body>
