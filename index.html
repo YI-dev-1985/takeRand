@@ -694,3 +694,122 @@
         if (placingStone && currentPlayer === P1) {
             const baseX = BOARD_W/2;
             const baseY = BASE1_Y;
+            if (Math.abs(x-baseX) <= BASE_SIZE/2 - BALL_RADIUS && Math.abs(y-baseY) <= BASE_SIZE/2 - BALL_RADIUS) {
+                ball.x = x;
+                ball.y = y;
+                placingStone = false;
+                updateHUD();
+                draw();
+                btnFire.disabled = false;
+            }
+            return;
+        }
+
+        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
+            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
+            if (distToBall < BALL_RADIUS * 3) {
+                isAiming = true;
+                aimStartX = x;
+                aimStartY = y;
+                aimCurrentX = x;
+                aimCurrentY = y;
+                btnFire.disabled = false;
+                startGaugeAnimation();
+                updateHUD();
+                draw();
+            }
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        if (!isAiming) return;
+        const touch = e.touches[0];
+        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
+        aimCurrentX = x;
+        aimCurrentY = y;
+        draw();
+    }
+
+    function handleTouchEnd(e) {
+        e.preventDefault();
+    }
+
+    function handleMouseDown(e) {
+        if (gameOver || ball.moving || !turnInProgress) return;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        if (placingStone && currentPlayer === P1) {
+            const baseX = BOARD_W/2;
+            const baseY = BASE1_Y;
+            if (Math.abs(x-baseX) <= BASE_SIZE/2 - BALL_RADIUS && Math.abs(y-baseY) <= BASE_SIZE/2 - BALL_RADIUS) {
+                ball.x = x;
+                ball.y = y;
+                placingStone = false;
+                updateHUD();
+                draw();
+                btnFire.disabled = false;
+            }
+            return;
+        }
+        if (currentPlayer === P1 && turnInProgress && !placingStone && !ball.moving && !failed) {
+            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
+            if (distToBall < BALL_RADIUS * 3) {
+                isAiming = true;
+                aimStartX = x;
+                aimStartY = y;
+                aimCurrentX = x;
+                aimCurrentY = y;
+                btnFire.disabled = false;
+                startGaugeAnimation();
+                updateHUD();
+                draw();
+            }
+        }
+    }
+
+    function handleMouseMove(e) {
+        if (!isAiming) return;
+        const { x, y } = getBoardCoords(e.clientX, e.clientY);
+        aimCurrentX = x;
+        aimCurrentY = y;
+        draw();
+    }
+
+    function handleMouseUp(e) {
+        // 발사는 버튼으로만
+    }
+
+    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
+    canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
+    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
+    canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+
+    btnFire.addEventListener('click', () => {
+        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+            launchBall();
+        }
+    });
+    btnFire.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (currentPlayer === P1 && isAiming && !ball.moving && turnInProgress && !placingStone && !failed) {
+            launchBall();
+        }
+    });
+
+    btnRestart.addEventListener('click', () => { initGame(); });
+    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+
+    resizeCanvas();
+    initGame();
+    console.log('🏆 땅따먹기 v7.2 - 사각형 기지 & 영역 채우기');
+})();
+</script>
+</body>
+</html>
