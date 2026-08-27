@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.0</title>
+    <title>땅따먹기 v9.1</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.0</div>
+            <div id="version-badge">v9.1</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -113,7 +113,7 @@
     // ===== 게임 설정 =====
     const BOARD_W = 800;
     const BOARD_H = 500;
-    const BASE_SIZE = 90;  // 90×90 = 8,100px² = 전체(400,000)의 2.025%
+    const BASE_SIZE = 90;  // 게임 로직상 정사각형 90×90
     const BALL_RADIUS = 5;
     const WALL_THICKNESS = 2;
     const FRICTION = 0.99;
@@ -123,7 +123,7 @@
     const BASE_LOSS_RATIO = 0.5;
     const POWER_MAX = 10;
     const SAFE_DIST_FROM_START = BALL_RADIUS * 3;
-    const TRAIL_THICKNESS = 1;  // 얇은 라인
+    const TRAIL_THICKNESS = 1;
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -169,6 +169,7 @@
         wallMap = new Uint8Array(BOARD_W * BOARD_H);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
+        // 기지 영역은 정사각형으로 채움 (게임 좌표계)
         fillRectToMap(territoryMap, BASE1_X - BASE_SIZE/2, BASE1_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P1);
         fillRectToMap(territoryMap, BASE2_X - BASE_SIZE/2, BASE2_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P2);
     }
@@ -220,7 +221,6 @@
         draw();
     }
 
-    // ===== UI 업데이트 =====
     function updateButtons() {
         btnConfirm.disabled = !placingMode;
         btnCancel.disabled = placingMode;
@@ -277,7 +277,6 @@
         }
     }
 
-    // ===== 캔버스 =====
     function resizeCanvas() {
         const wrapper = document.getElementById('board-wrapper');
         const rect = wrapper.getBoundingClientRect();
@@ -333,21 +332,24 @@
             }
         }
 
+        // ★ 화면에서 정사각형으로 보이도록 scaleFactor 사용
         const scaleFactor = Math.min(cellW, cellH);
         const base1ScreenX = BASE1_X * cellW;
         const base1ScreenY = BASE1_Y * cellH;
         const base1ScreenSize = BASE_SIZE * scaleFactor;
+
         const base2ScreenX = BASE2_X * cellW;
         const base2ScreenY = BASE2_Y * cellH;
         const base2ScreenSize = BASE_SIZE * scaleFactor;
 
-        // 기지 사각형
+        // P1 기지 (정사각형)
         ctx.fillStyle = 'rgba(78, 204, 163, 0.9)';
         ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
 
+        // P2 기지 (정사각형)
         ctx.fillStyle = 'rgba(255, 107, 107, 0.9)';
         ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
         ctx.strokeStyle = '#fff';
@@ -406,7 +408,7 @@
         }
     }
 
-    // ===== 게임 로직 =====
+    // ===== 게임 로직 (이전 버전과 동일) =====
     function confirmPosition() {
         if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
         placingMode = false;
@@ -553,7 +555,7 @@
         if (isInsideMyTerritory(ball.x, ball.y)) {
             if (hasLeftBase) {
                 acquireTerritory();
-                draw();  // ★ 영역 획득 즉시 화면 갱신
+                draw();
                 showSuccessToast();
                 endTurn(true);
             } else {
@@ -583,14 +585,11 @@
         }, 1500);
     }
 
-    // ★ 핵심: 영역 획득 로직
     function acquireTerritory() {
-        // 1. 임시 벽을 영구 벽에 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
 
-        // 2. Flood Fill로 벽 안쪽 영역 찾기
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [];
         const startX = Math.floor(BASE1_X);
@@ -610,21 +609,19 @@
                 if (nx < 0 || nx >= BOARD_W || ny < 0 || ny >= BOARD_H) continue;
                 const nIdx = ny * BOARD_W + nx;
                 if (visited[nIdx]) continue;
-                if (wallMap[nIdx] === 1) continue;  // 벽이면 막힘
+                if (wallMap[nIdx] === 1) continue;
                 if (territoryMap[nIdx] !== NEUTRAL && territoryMap[nIdx] !== currentPlayer) continue;
                 visited[nIdx] = 1;
                 queue.push(nIdx);
             }
         }
 
-        // 3. 방문하지 않은 중립 영역을 currentPlayer로 채움
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i] && territoryMap[i] === NEUTRAL) {
                 territoryMap[i] = currentPlayer;
             }
         }
 
-        // 4. 임시 벽 초기화
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
     }
@@ -643,7 +640,6 @@
         updateButtons();
         updateHUD();
 
-        // 기지 손실 확인
         let p1BaseLost = 0, p2BaseLost = 0;
 
         for (let y = Math.floor(BASE1_Y - BASE_SIZE/2); y <= Math.ceil(BASE1_Y + BASE_SIZE/2); y++) {
@@ -681,7 +677,6 @@
         draw();
     }
 
-    // ===== 입력 처리 =====
     function getBoardCoords(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
         return {
@@ -778,7 +773,6 @@
         // 발사는 버튼으로만
     }
 
-    // ===== 이벤트 리스너 =====
     canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
     canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
     canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
@@ -812,12 +806,9 @@
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
 
-    // ===== 시작 =====
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.0 - 전체 분석 & 개선');
-    console.log(`📐 맵: ${BOARD_W}×${BOARD_H} = ${TOTAL_AREA}px²`);
-    console.log(`🏠 기지: ${BASE_SIZE}×${BASE_SIZE} = ${BASE_AREA}px² (${(BASE_AREA/TOTAL_AREA*100).toFixed(2)}%)`);
+    console.log('🏆 땅따먹기 v9.1 - 정사각형 기지 보장');
 })();
 </script>
 </body>
