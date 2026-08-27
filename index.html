@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.5</title>
+    <title>땅따먹기 v9.6</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -64,7 +64,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.5</div>
+            <div id="version-badge">v9.6</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -97,7 +97,7 @@
         <button class="btn" id="btn-cancel">🔄 재설정</button>
         <button class="btn" id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 다이얼로 방향 설정 → 발사</div>
+    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 다이얼로 방향 → 발사</div>
 </div>
 <script>
 (function() {
@@ -152,12 +152,10 @@
     let turnInProgress = false;
     let placingMode = true;
     let failed = false;
-    let aimAngle = 0;  // 라디안
+    let aimAngle = 0;
+    let dialAngle = 0;
 
     let ball = { x: 0, y: 0, vx: 0, vy: 0, moving: false };
-
-    let isAiming = false;
-    let dialAngle = 0;  // 도 단위
 
     let gaugeAnimId = null;
     let gaugeDirection = 1;
@@ -168,7 +166,6 @@
     let scaleX = 1, scaleY = 1;
     let animId = null;
 
-    // ===== 다이얼 조작 =====
     let dialDragging = false;
     let dialCenterX = 0, dialCenterY = 0;
 
@@ -187,7 +184,7 @@
         const dx = clientX - dialCenterX;
         const dy = clientY - dialCenterY;
         let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        angle = (angle + 90 + 360) % 360;  // 0도 = 위쪽
+        angle = (angle + 90 + 360) % 360;
         return angle;
     }
 
@@ -286,7 +283,6 @@
         failed = false;
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
-        isAiming = false;
         dialAngle = 0;
         aimAngle = 0;
         updateDialArrow();
@@ -317,7 +313,7 @@
         } else {
             btnConfirm.disabled = true;
             btnCancel.disabled = false;
-            btnFire.disabled = false;  // 발사 모드에서는 항상 활성화
+            btnFire.disabled = false;
         }
     }
 
@@ -454,7 +450,6 @@
         const ballScreenY = ball.y * cellH;
         const ballScreenR = BALL_RADIUS * scaleFactor;
 
-        // ★ 방향 화살표 (발사 모드에서만)
         if (!placingMode && !ball.moving && !gameOver) {
             const arrowLen = 20 * scaleFactor;
             const arrowX = ballScreenX + Math.cos(aimAngle) * arrowLen;
@@ -465,7 +460,6 @@
             ctx.moveTo(ballScreenX, ballScreenY);
             ctx.lineTo(arrowX, arrowY);
             ctx.stroke();
-            // 화살촉
             const headLen = 6 * scaleFactor;
             const headAngle = 0.5;
             ctx.fillStyle = '#ffd700';
@@ -502,8 +496,7 @@
     function confirmPosition() {
         if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
         placingMode = false;
-        isAiming = false;
-        startGaugeAnimation();  // 게이지 시작
+        startGaugeAnimation();
         updateHUD();
         updateButtons();
         draw();
@@ -512,7 +505,6 @@
     function cancelPosition() {
         if (placingMode || ball.moving || gameOver || !turnInProgress) return;
         placingMode = true;
-        isAiming = false;
         stopGaugeAnimation();
         updateHUD();
         updateButtons();
@@ -639,10 +631,13 @@
     function checkEndOfShot() {
         if (isInsideMyTerritory(ball.x, ball.y)) {
             if (hasLeftBase) {
+                // ★ 영역 획득 → 즉시 draw → 토스트 → 턴 전환
                 acquireTerritory();
-                draw();
+                draw();  // ★ 즉시 화면 갱신
                 showSuccessToast();
-                endTurn(true);
+                setTimeout(() => {
+                    endTurn(true);
+                }, 300);
             } else {
                 tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
                 pathPoints = [];
@@ -667,13 +662,16 @@
         successToast.style.opacity = '1';
         setTimeout(() => {
             successToast.style.opacity = '0';
-        }, 1500);
+        }, 1000);
     }
 
     function acquireTerritory() {
+        // 1. 임시 벽을 영구 벽에 합치기
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
+
+        // 2. Flood Fill
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [];
         const startX = Math.floor(BASE1_X);
@@ -681,6 +679,7 @@
         const startIdx = startY * BOARD_W + startX;
         visited[startIdx] = 1;
         queue.push(startIdx);
+
         const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
         while (queue.length > 0) {
             const idx = queue.shift();
@@ -698,11 +697,14 @@
                 queue.push(nIdx);
             }
         }
+
+        // 3. 방문하지 않은 중립 영역을 currentPlayer 색으로 채움
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i] && territoryMap[i] === NEUTRAL) {
-                territoryMap[i] = currentPlayer;
+                territoryMap[i] = currentPlayer;  // ★ P1이면 1, P2면 2
             }
         }
+
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
     }
@@ -767,7 +769,6 @@
         if (gameOver || ball.moving || !turnInProgress) return;
         const touch = e.touches[0];
         const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
-
         if (placingMode) {
             if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
@@ -775,7 +776,6 @@
                 draw();
                 updateHUD();
             }
-            return;
         }
     }
 
@@ -830,7 +830,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.5 - 방향 다이얼');
+    console.log('🏆 땅따먹기 v9.6 - 영역 색상 즉시 갱신 & P2 색상');
 })();
 </script>
 </body>
