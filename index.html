@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.3</title>
+    <title>땅따먹기 v9.4</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -41,7 +41,7 @@
         #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
         .btn { padding:8px 18px; font-size:16px; font-weight:900; border:none; border-radius:20px; cursor:pointer; }
         .btn:active { transform:scale(0.95); }
-        .btn:disabled { background:#555; color:#999; }
+        .btn:disabled { background:#555; color:#999; opacity:0.5; }
         #btn-confirm { background:var(--confirm); color:#fff; }
         #btn-cancel { background:var(--cancel); color:#fff; }
         #btn-fire { background:var(--button); color:#000; padding:8px 24px; font-size:18px; }
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.3</div>
+            <div id="version-badge">v9.4</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -90,7 +90,7 @@
         <button class="btn" id="btn-cancel">🔄 재설정</button>
         <button class="btn" id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 공 근처 드래그 → 발사</div>
+    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 공 근처에서 드래그 → 발사</div>
 </div>
 <script>
 (function() {
@@ -110,7 +110,6 @@
     const btnCancel = document.getElementById('btn-cancel');
     const successToast = document.getElementById('success-toast');
 
-    // ===== 동적 맵 크기 =====
     let BOARD_W = 800;
     let BOARD_H = 500;
     const BASE_SIZE = 90;
@@ -161,34 +160,25 @@
     let scaleX = 1, scaleY = 1;
     let animId = null;
 
-    // ===== 화면 비율에 맞게 맵 크기 조정 =====
     function adjustBoardSize() {
         const wrapper = document.getElementById('board-wrapper');
         const rect = wrapper.getBoundingClientRect();
         const availW = Math.max(100, rect.width - 4);
         const availH = Math.max(100, rect.height - 4);
-        
         const aspectRatio = availW / availH;
-        
-        // 화면 비율에 맞게 BOARD_W와 BOARD_H 설정
         if (aspectRatio > 1.6) {
-            // 가로가 더 긴 경우
             BOARD_H = 500;
             BOARD_W = Math.floor(500 * aspectRatio);
         } else {
-            // 세로가 더 긴 경우
             BOARD_W = 800;
             BOARD_H = Math.floor(800 / aspectRatio);
         }
-        
         BASE1_X = BOARD_W / 2;
         BASE1_Y = BASE_SIZE / 2;
         BASE2_X = BOARD_W / 2;
         BASE2_Y = BOARD_H - BASE_SIZE / 2;
         TOTAL_AREA = BOARD_W * BOARD_H;
         BASE_AREA = BASE_SIZE * BASE_SIZE;
-        
-        console.log(`📐 맵 크기: ${BOARD_W}×${BOARD_H}, 비율: ${aspectRatio.toFixed(2)}`);
     }
 
     function initTerritory() {
@@ -248,10 +238,18 @@
         draw();
     }
 
+    // ★ 버튼 상태 업데이트 수정
     function updateButtons() {
-        btnConfirm.disabled = !placingMode;
-        btnCancel.disabled = placingMode;
-        btnFire.disabled = placingMode || !isAiming;
+        if (placingMode) {
+            btnConfirm.disabled = false;
+            btnCancel.disabled = true;
+            btnFire.disabled = true;
+        } else {
+            btnConfirm.disabled = true;
+            btnCancel.disabled = false;
+            // isAiming이 true일 때만 발사 버튼 활성화
+            btnFire.disabled = !isAiming;
+        }
     }
 
     function updateHUD() {
@@ -266,8 +264,8 @@
         let status = '';
         if (placingMode) status = ' 공 배치: 내 영역 터치';
         else if (failed) status = ' 실패!';
-        else if (isAiming) status = ' 방향 설정 중';
-        else status = ` 남은 발사: ${shotsLeft}`;
+        else if (isAiming) status = ' 방향 설정 중 - 발사 버튼 클릭!';
+        else status = ' 공 근처에서 드래그하여 방향 설정';
         turnInfoEl.textContent = playerName + ' ' + status;
     }
 
@@ -398,6 +396,7 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
+        // 조준선
         if (isAiming && !placingMode && !ball.moving && !gameOver) {
             const dx = aimStartX - aimCurrentX;
             const dy = aimStartY - aimCurrentY;
@@ -415,6 +414,7 @@
             }
         }
 
+        // 배치 모드 표시
         if (placingMode && !ball.moving && !gameOver) {
             ctx.strokeStyle = 'rgba(255,255,255,0.6)';
             ctx.lineWidth = 2;
@@ -424,8 +424,17 @@
             ctx.stroke();
             ctx.setLineDash([]);
         }
+
+        // 발사 모드 안내
+        if (!placingMode && !isAiming && !ball.moving && !gameOver) {
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = 'bold 14px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('공 근처에서 드래그하세요!', ballScreenX, ballScreenY - 25 * scaleFactor);
+        }
     }
 
+    // ★ 위치 완료 후 발사 모드
     function confirmPosition() {
         if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
         placingMode = false;
@@ -606,7 +615,6 @@
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
-
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [];
         const startX = Math.floor(BASE1_X);
@@ -614,7 +622,6 @@
         const startIdx = startY * BOARD_W + startX;
         visited[startIdx] = 1;
         queue.push(startIdx);
-
         const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
         while (queue.length > 0) {
             const idx = queue.shift();
@@ -632,13 +639,11 @@
                 queue.push(nIdx);
             }
         }
-
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i] && territoryMap[i] === NEUTRAL) {
                 territoryMap[i] = currentPlayer;
             }
         }
-
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
     }
@@ -658,7 +663,6 @@
         updateHUD();
 
         let p1BaseLost = 0, p2BaseLost = 0;
-
         for (let y = Math.floor(BASE1_Y - BASE_SIZE/2); y <= Math.ceil(BASE1_Y + BASE_SIZE/2); y++) {
             for (let x = Math.floor(BASE1_X - BASE_SIZE/2); x <= Math.ceil(BASE1_X + BASE_SIZE/2); x++) {
                 if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
@@ -671,7 +675,6 @@
                 if (territoryMap[y*BOARD_W + x] !== P2) p2BaseLost++;
             }
         }
-
         if (p1BaseLost / BASE_AREA > BASE_LOSS_RATIO) {
             gameOver = true;
             showGameOver(false, 'P1 기지 50% 이상 빼앗김!');
@@ -681,7 +684,6 @@
             showGameOver(true, 'P2 기지 50% 이상 빼앗음!');
             return;
         }
-
         currentPlayer = currentPlayer === P1 ? P2 : P1;
         resetBall();
         draw();
@@ -718,9 +720,10 @@
             return;
         }
 
+        // ★ 발사 모드: 공 근처에서 드래그 시작
         if (turnInProgress && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 3) {
+            if (distToBall < BALL_RADIUS * 5) {  // 범위 확대
                 isAiming = true;
                 aimStartX = x;
                 aimStartY = y;
@@ -751,7 +754,6 @@
     function handleMouseDown(e) {
         if (gameOver || ball.moving || !turnInProgress) return;
         const { x, y } = getBoardCoords(e.clientX, e.clientY);
-
         if (placingMode) {
             if (isInsideMyTerritory(x, y)) {
                 ball.x = x;
@@ -761,10 +763,9 @@
             }
             return;
         }
-
         if (turnInProgress && !failed) {
             const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 3) {
+            if (distToBall < BALL_RADIUS * 5) {
                 isAiming = true;
                 aimStartX = x;
                 aimStartY = y;
@@ -794,17 +795,14 @@
     canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
     canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
     canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
-
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
 
     btnConfirm.addEventListener('click', confirmPosition);
     btnConfirm.addEventListener('touchend', (e) => { e.preventDefault(); confirmPosition(); });
-
     btnCancel.addEventListener('click', cancelPosition);
     btnCancel.addEventListener('touchend', (e) => { e.preventDefault(); cancelPosition(); });
-
     btnFire.addEventListener('click', () => {
         if (isAiming && !ball.moving && turnInProgress && !placingMode && !failed) {
             launchBall();
@@ -822,7 +820,6 @@
 
     window.addEventListener('resize', () => {
         resizeCanvas();
-        // 화면 크기 변경 시 맵 재조정
         if (territoryMap) {
             initTerritory();
             resetBall();
@@ -842,7 +839,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.3 - 화면 비율에 맞는 맵');
+    console.log('🏆 땅따먹기 v9.4 - 방향 조절 & 파워 게이지 활성화');
 })();
 </script>
 </body>
