@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.7</title>
+    <title>땅따먹기 v10.0</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -35,19 +35,19 @@
         #btn-restart { padding:10px 28px; font-size:16px; font-weight:700; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
         #controls { display:flex; align-items:center; gap:8px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; flex-wrap:wrap; }
-        #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; min-width:120px; }
+        #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; min-width:100px; }
         #gauge-bar-bg { flex:1; height:14px; background:#333; border-radius:7px; overflow:hidden; }
         #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:7px; }
         #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
-        .btn { padding:8px 16px; font-size:14px; font-weight:900; border:none; border-radius:20px; cursor:pointer; }
+        .btn { padding:8px 14px; font-size:13px; font-weight:900; border:none; border-radius:18px; cursor:pointer; }
         .btn:active { transform:scale(0.95); }
         .btn:disabled { background:#555; color:#999; opacity:0.5; }
         #btn-confirm { background:var(--confirm); color:#fff; }
         #btn-cancel { background:var(--cancel); color:#fff; }
-        #btn-fire { background:var(--button); color:#000; padding:8px 24px; font-size:18px; }
-        #dial-wrapper { position:relative; width:60px; height:60px; }
-        #dial { width:60px; height:60px; border-radius:50%; background:#333; border:3px solid #555; cursor:pointer; touch-action:none; }
-        #dial-arrow { position:absolute; top:50%; left:50%; width:2px; height:24px; background:#ffd700; transform-origin:bottom center; transform:translate(-50%, -100%); }
+        #btn-fire { background:var(--button); color:#000; padding:8px 20px; font-size:16px; }
+        #dial-wrapper { position:relative; width:50px; height:50px; }
+        #dial { width:50px; height:50px; border-radius:50%; background:#333; border:3px solid #555; cursor:pointer; touch-action:none; }
+        #dial-arrow { position:absolute; top:50%; left:50%; width:2px; height:20px; background:#ffd700; transform-origin:bottom center; transform:translate(-50%, -100%); }
         #instructions { color:#777; font-size:10px; text-align:center; }
         #success-toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(78,204,163,0.9); color:#fff; padding:16px 32px; border-radius:16px; font-size:24px; font-weight:900; z-index:20; pointer-events:none; opacity:0; transition:opacity 0.3s; }
     </style>
@@ -64,7 +64,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.7</div>
+            <div id="version-badge">v10.0</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -93,11 +93,11 @@
             <div id="dial"></div>
             <div id="dial-arrow"></div>
         </div>
-        <button class="btn" id="btn-confirm">✅ 위치 완료</button>
+        <button class="btn" id="btn-confirm">✅ 완료</button>
         <button class="btn" id="btn-cancel">🔄 재설정</button>
         <button class="btn" id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 다이얼로 방향 → 발사</div>
+    <div id="instructions">👆 내 영역 터치 → 완료 → 다이얼 → 발사</div>
 </div>
 <script>
 (function() {
@@ -119,11 +119,12 @@
     const dial = document.getElementById('dial');
     const dialArrow = document.getElementById('dial-arrow');
 
+    // ===== 게임 설정 =====
     let BOARD_W = 800;
     let BOARD_H = 500;
     const BASE_SIZE = 90;
     const BALL_RADIUS = 5;
-    const WALL_THICKNESS = 2;
+    const WALL_THICKNESS = 3;  // 벽 두께 증가로 Flood Fill 정확도 향상
     const FRICTION = 0.99;
     const MAX_SPEED = 10;
     const MIN_SPEED = 0.2;
@@ -131,7 +132,7 @@
     const BASE_LOSS_RATIO = 0.5;
     const POWER_MAX = 10;
     const SAFE_DIST_FROM_START = BALL_RADIUS * 3;
-    const TRAIL_THICKNESS = 1;
+    const TRAIL_THICKNESS = 2;  // 라인 두께 증가로 벽이 확실히 막히도록
 
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
@@ -169,74 +170,69 @@
     let dialDragging = false;
     let dialCenterX = 0, dialCenterY = 0;
 
+    // ===== 다이얼 =====
     function initDial() {
         const rect = dial.getBoundingClientRect();
         dialCenterX = rect.left + rect.width / 2;
         dialCenterY = rect.top + rect.height / 2;
     }
-
     function updateDialArrow() {
         dialArrow.style.transform = `translate(-50%, -100%) rotate(${dialAngle}deg)`;
         dialArrow.style.transformOrigin = 'bottom center';
     }
-
-    function getDialAngle(clientX, clientY) {
-        const dx = clientX - dialCenterX;
-        const dy = clientY - dialCenterY;
+    function getDialAngle(cx, cy) {
+        const dx = cx - dialCenterX;
+        const dy = cy - dialCenterY;
         let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        angle = (angle + 90 + 360) % 360;
-        return angle;
+        return (angle + 90 + 360) % 360;
     }
-
-    function handleDialStart(e) {
+    dial.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if (placingMode || ball.moving || gameOver || !turnInProgress) return;
+        if (placingMode || ball.moving || gameOver) return;
         dialDragging = true;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        dialAngle = getDialAngle(clientX, clientY);
-        aimAngle = dialAngle * (Math.PI / 180);
+        const t = e.touches[0];
+        dialAngle = getDialAngle(t.clientX, t.clientY);
+        aimAngle = dialAngle * Math.PI / 180;
         updateDialArrow();
         draw();
-    }
-
-    function handleDialMove(e) {
+    }, {passive:false});
+    dial.addEventListener('touchmove', (e) => {
         e.preventDefault();
         if (!dialDragging) return;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        dialAngle = getDialAngle(clientX, clientY);
-        aimAngle = dialAngle * (Math.PI / 180);
+        const t = e.touches[0];
+        dialAngle = getDialAngle(t.clientX, t.clientY);
+        aimAngle = dialAngle * Math.PI / 180;
         updateDialArrow();
         draw();
-    }
+    }, {passive:false});
+    dial.addEventListener('touchend', (e) => { dialDragging = false; });
+    dial.addEventListener('mousedown', (e) => {
+        if (placingMode || ball.moving || gameOver) return;
+        dialDragging = true;
+        dialAngle = getDialAngle(e.clientX, e.clientY);
+        aimAngle = dialAngle * Math.PI / 180;
+        updateDialArrow();
+        draw();
+    });
+    dial.addEventListener('mousemove', (e) => {
+        if (!dialDragging) return;
+        dialAngle = getDialAngle(e.clientX, e.clientY);
+        aimAngle = dialAngle * Math.PI / 180;
+        updateDialArrow();
+        draw();
+    });
+    dial.addEventListener('mouseup', () => { dialDragging = false; });
+    dial.addEventListener('mouseleave', () => { dialDragging = false; });
 
-    function handleDialEnd(e) {
-        e.preventDefault();
-        dialDragging = false;
-    }
-
-    dial.addEventListener('touchstart', handleDialStart, {passive:false});
-    dial.addEventListener('touchmove', handleDialMove, {passive:false});
-    dial.addEventListener('touchend', handleDialEnd, {passive:false});
-    dial.addEventListener('mousedown', handleDialStart);
-    dial.addEventListener('mousemove', handleDialMove);
-    dial.addEventListener('mouseup', handleDialEnd);
-    dial.addEventListener('mouseleave', handleDialEnd);
-
+    // ===== 맵 크기 =====
     function adjustBoardSize() {
         const wrapper = document.getElementById('board-wrapper');
         const rect = wrapper.getBoundingClientRect();
         const availW = Math.max(100, rect.width - 4);
         const availH = Math.max(100, rect.height - 4);
-        const aspectRatio = availW / availH;
-        if (aspectRatio > 1.6) {
-            BOARD_H = 500;
-            BOARD_W = Math.floor(500 * aspectRatio);
-        } else {
-            BOARD_W = 800;
-            BOARD_H = Math.floor(800 / aspectRatio);
-        }
+        const ratio = availW / availH;
+        if (ratio > 1.6) { BOARD_H = 500; BOARD_W = Math.floor(500 * ratio); }
+        else { BOARD_W = 800; BOARD_H = Math.floor(800 / ratio); }
         BASE1_X = BOARD_W / 2;
         BASE1_Y = BASE_SIZE / 2;
         BASE2_X = BOARD_W / 2;
@@ -245,22 +241,20 @@
         BASE_AREA = BASE_SIZE * BASE_SIZE;
     }
 
+    // ===== 초기화 =====
     function initTerritory() {
         adjustBoardSize();
         territoryMap = new Uint8Array(BOARD_W * BOARD_H);
         wallMap = new Uint8Array(BOARD_W * BOARD_H);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
-        fillRectToMap(territoryMap, BASE1_X - BASE_SIZE/2, BASE1_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P1);
-        fillRectToMap(territoryMap, BASE2_X - BASE_SIZE/2, BASE2_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P2);
+        fillRect(territoryMap, BASE1_X - BASE_SIZE/2, BASE1_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P1);
+        fillRect(territoryMap, BASE2_X - BASE_SIZE/2, BASE2_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P2);
     }
-
-    function fillRectToMap(map, x, y, w, h, owner) {
+    function fillRect(map, x, y, w, h, owner) {
         for (let r = Math.floor(y); r < Math.ceil(y+h); r++) {
             for (let c = Math.floor(x); c < Math.ceil(x+w); c++) {
-                if (c >= 0 && c < BOARD_W && r >= 0 && r < BOARD_H) {
-                    map[r * BOARD_W + c] = owner;
-                }
+                if (c >= 0 && c < BOARD_W && r >= 0 && r < BOARD_H) map[r * BOARD_W + c] = owner;
             }
         }
     }
@@ -268,13 +262,8 @@
     function resetBall() {
         ball.moving = false;
         ball.vx = 0; ball.vy = 0;
-        if (currentPlayer === P1) {
-            ball.x = BASE1_X;
-            ball.y = BASE1_Y;
-        } else {
-            ball.x = BASE2_X;
-            ball.y = BASE2_Y;
-        }
+        ball.x = currentPlayer === P1 ? BASE1_X : BASE2_X;
+        ball.y = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
         shotsLeft = MAX_SHOTS_PER_TURN;
         shotsFired = 0;
         hasLeftBase = false;
@@ -305,77 +294,51 @@
         draw();
     }
 
+    // ===== UI =====
     function updateButtons() {
-        if (placingMode) {
-            btnConfirm.disabled = false;
-            btnCancel.disabled = true;
-            btnFire.disabled = true;
-        } else {
-            btnConfirm.disabled = true;
-            btnCancel.disabled = false;
-            btnFire.disabled = false;
-        }
+        btnConfirm.disabled = !placingMode;
+        btnCancel.disabled = placingMode;
+        btnFire.disabled = placingMode;
     }
-
     function updateHUD() {
-        let p1Count = 0, p2Count = 0;
+        let p1 = 0, p2 = 0;
         for (let i = 0; i < territoryMap.length; i++) {
-            if (territoryMap[i] === P1) p1Count++;
-            else if (territoryMap[i] === P2) p2Count++;
+            if (territoryMap[i] === P1) p1++;
+            else if (territoryMap[i] === P2) p2++;
         }
-        p1ScoreEl.textContent = Math.round(p1Count / TOTAL_AREA * 100) + '%';
-        p2ScoreEl.textContent = Math.round(p2Count / TOTAL_AREA * 100) + '%';
-        const playerName = currentPlayer === P1 ? '🟢 P1' : '🔴 P2';
-        let status = '';
-        if (placingMode) status = ' 공 배치: 내 영역 터치';
-        else if (failed) status = ' 실패!';
-        else status = ` 남은 발사: ${shotsLeft} | 방향: ${dialAngle}°`;
-        turnInfoEl.textContent = playerName + ' ' + status;
+        p1ScoreEl.textContent = Math.round(p1 / TOTAL_AREA * 100) + '%';
+        p2ScoreEl.textContent = Math.round(p2 / TOTAL_AREA * 100) + '%';
+        const name = currentPlayer === P1 ? '🟢 P1' : '🔴 P2';
+        let status = placingMode ? ' 공 배치' : failed ? ' 실패!' : ` ${shotsLeft}발 | ${dialAngle}°`;
+        turnInfoEl.textContent = name + status;
     }
-
     function updateGaugeUI() {
         gaugeBar.style.width = (gaugeValueCurrent / POWER_MAX * 100) + '%';
         gaugeValue.textContent = gaugeValueCurrent.toFixed(1);
     }
-
-    function startGaugeAnimation() {
+    function startGauge() {
         if (gaugeAnimId) cancelAnimationFrame(gaugeAnimId);
-        function animateGauge() {
-            if (placingMode || gameOver || !turnInProgress || ball.moving) {
-                gaugeAnimId = null;
-                return;
-            }
+        function anim() {
+            if (placingMode || gameOver || ball.moving) { gaugeAnimId = null; return; }
             gaugeValueCurrent += gaugeDirection * 0.15;
-            if (gaugeValueCurrent >= POWER_MAX) {
-                gaugeValueCurrent = POWER_MAX;
-                gaugeDirection = -1;
-            } else if (gaugeValueCurrent <= 0) {
-                gaugeValueCurrent = 0;
-                gaugeDirection = 1;
-            }
+            if (gaugeValueCurrent >= POWER_MAX) { gaugeValueCurrent = POWER_MAX; gaugeDirection = -1; }
+            else if (gaugeValueCurrent <= 0) { gaugeValueCurrent = 0; gaugeDirection = 1; }
             updateGaugeUI();
-            gaugeAnimId = requestAnimationFrame(animateGauge);
+            gaugeAnimId = requestAnimationFrame(anim);
         }
-        gaugeAnimId = requestAnimationFrame(animateGauge);
+        gaugeAnimId = requestAnimationFrame(anim);
+    }
+    function stopGauge() {
+        if (gaugeAnimId) { cancelAnimationFrame(gaugeAnimId); gaugeAnimId = null; }
     }
 
-    function stopGaugeAnimation() {
-        if (gaugeAnimId) {
-            cancelAnimationFrame(gaugeAnimId);
-            gaugeAnimId = null;
-        }
-    }
-
+    // ===== 캔버스 =====
     function resizeCanvas() {
         const wrapper = document.getElementById('board-wrapper');
         const rect = wrapper.getBoundingClientRect();
         dpr = window.devicePixelRatio || 1;
-        const maxW = rect.width - 4;
-        const maxH = rect.height - 4;
-        if (maxW <= 0 || maxH <= 0) {
-            requestAnimationFrame(resizeCanvas);
-            return;
-        }
+        const maxW = rect.width - 4, maxH = rect.height - 4;
+        if (maxW <= 0 || maxH <= 0) { requestAnimationFrame(resizeCanvas); return; }
         canvasW = Math.floor(maxW);
         canvasH = Math.floor(maxH);
         canvas.style.width = canvasW + 'px';
@@ -393,202 +356,141 @@
         ctx.clearRect(0, 0, canvasW, canvasH);
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvasW, canvasH);
+        const cw = canvasW / BOARD_W, ch = canvasH / BOARD_H;
 
-        const cellW = canvasW / BOARD_W;
-        const cellH = canvasH / BOARD_H;
-
-        // ★ 영역을 한 번에 그리기 (성능 + 정확성)
+        // ★ 영역 그리기 - P1, P2 구분
         for (let r = 0; r < BOARD_H; r++) {
             for (let c = 0; c < BOARD_W; c++) {
-                const idx = r * BOARD_W + c;
-                const val = territoryMap[idx];
-                if (val === P1) {
-                    ctx.fillStyle = '#4ecca3';
-                    ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
-                } else if (val === P2) {
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
-                }
+                const v = territoryMap[r * BOARD_W + c];
+                if (v === P1) { ctx.fillStyle = '#4ecca3'; ctx.fillRect(c*cw, r*ch, cw+0.5, ch+0.5); }
+                else if (v === P2) { ctx.fillStyle = '#ff6b6b'; ctx.fillRect(c*cw, r*ch, cw+0.5, ch+0.5); }
             }
         }
 
         // 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1 || tempWallMap[i] === 1) {
-                const x = i % BOARD_W;
-                const y = Math.floor(i / BOARD_W);
                 ctx.fillStyle = '#aaaacc';
-                ctx.fillRect(x * cellW, y * cellH, cellW + 0.5, cellH + 0.5);
+                ctx.fillRect((i % BOARD_W) * cw, Math.floor(i / BOARD_W) * ch, cw+0.5, ch+0.5);
             }
         }
 
-        const scaleFactor = Math.min(cellW, cellH);
-        const base1ScreenX = BASE1_X * cellW;
-        const base1ScreenY = BASE1_Y * cellH;
-        const base1ScreenSize = BASE_SIZE * scaleFactor;
-        const base2ScreenX = BASE2_X * cellW;
-        const base2ScreenY = BASE2_Y * cellH;
-        const base2ScreenSize = BASE_SIZE * scaleFactor;
+        const sf = Math.min(cw, ch);
+        const b1x = BASE1_X * cw, b1y = BASE1_Y * ch, b1s = BASE_SIZE * sf;
+        const b2x = BASE2_X * cw, b2y = BASE2_Y * ch, b2s = BASE_SIZE * sf;
 
-        ctx.fillStyle = 'rgba(78, 204, 163, 0.9)';
-        ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
+        // 기지
+        ctx.fillStyle = 'rgba(78,204,163,0.9)';
+        ctx.fillRect(b1x-b1s/2, b1y-b1s/2, b1s, b1s);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.strokeRect(b1x-b1s/2, b1y-b1s/2, b1s, b1s);
+        ctx.fillStyle = 'rgba(255,107,107,0.9)';
+        ctx.fillRect(b2x-b2s/2, b2y-b2s/2, b2s, b2s);
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
+        ctx.strokeRect(b2x-b2s/2, b2y-b2s/2, b2s, b2s);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 20px -apple-system'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('P1', b1x, b1y);
+        ctx.fillText('P2', b2x, b2y);
 
-        ctx.fillStyle = 'rgba(255, 107, 107, 0.9)';
-        ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
-
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 20px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('P1', base1ScreenX, base1ScreenY);
-        ctx.fillText('P2', base2ScreenX, base2ScreenY);
-
-        const ballScreenX = ball.x * cellW;
-        const ballScreenY = ball.y * cellH;
-        const ballScreenR = BALL_RADIUS * scaleFactor;
-
+        // 방향 화살표
+        const bsx = ball.x * cw, bsy = ball.y * ch;
         if (!placingMode && !ball.moving && !gameOver) {
-            const arrowLen = 20 * scaleFactor;
-            const arrowX = ballScreenX + Math.cos(aimAngle) * arrowLen;
-            const arrowY = ballScreenY + Math.sin(aimAngle) * arrowLen;
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(ballScreenX, ballScreenY);
-            ctx.lineTo(arrowX, arrowY);
-            ctx.stroke();
-            const headLen = 6 * scaleFactor;
-            const headAngle = 0.5;
+            const al = 20 * sf;
+            const ax = bsx + Math.cos(aimAngle) * al;
+            const ay = bsy + Math.sin(aimAngle) * al;
+            ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(bsx, bsy); ctx.lineTo(ax, ay); ctx.stroke();
+            const hl = 6 * sf, ha = 0.5;
             ctx.fillStyle = '#ffd700';
             ctx.beginPath();
-            ctx.moveTo(arrowX, arrowY);
-            ctx.lineTo(arrowX - headLen * Math.cos(aimAngle - headAngle), arrowY - headLen * Math.sin(aimAngle - headAngle));
-            ctx.lineTo(arrowX - headLen * Math.cos(aimAngle + headAngle), arrowY - headLen * Math.sin(aimAngle + headAngle));
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax - hl*Math.cos(aimAngle-ha), ay - hl*Math.sin(aimAngle-ha));
+            ctx.lineTo(ax - hl*Math.cos(aimAngle+ha), ay - hl*Math.sin(aimAngle+ha));
+            ctx.closePath(); ctx.fill();
         }
 
-        ctx.shadowColor = 'rgba(255,255,255,0.9)';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(ballScreenX, ballScreenY, ballScreenR, 0, Math.PI*2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        // 공
+        ctx.shadowColor = 'rgba(255,255,255,0.9)'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(bsx, bsy, BALL_RADIUS*sf, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        if (placingMode && !ball.moving && !gameOver) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(ballScreenX, ballScreenY, BALL_RADIUS * 5 * scaleFactor, 0, Math.PI*2);
-            ctx.stroke();
+        // 배치 표시
+        if (placingMode && !ball.moving) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
+            ctx.setLineDash([4,4]);
+            ctx.beginPath(); ctx.arc(bsx, bsy, BALL_RADIUS*5*sf, 0, Math.PI*2); ctx.stroke();
             ctx.setLineDash([]);
         }
     }
 
+    // ===== 게임 로직 =====
     function confirmPosition() {
-        if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
+        if (!placingMode || ball.moving || gameOver) return;
         placingMode = false;
-        startGaugeAnimation();
-        updateHUD();
-        updateButtons();
-        draw();
+        startGauge();
+        updateHUD(); updateButtons(); draw();
     }
-
     function cancelPosition() {
-        if (placingMode || ball.moving || gameOver || !turnInProgress) return;
+        if (placingMode || ball.moving || gameOver) return;
         placingMode = true;
-        stopGaugeAnimation();
-        updateHUD();
-        updateButtons();
-        draw();
+        stopGauge();
+        updateHUD(); updateButtons(); draw();
     }
-
     function launchBall() {
-        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingMode || failed) return;
+        if (ball.moving || gameOver || shotsLeft <= 0 || placingMode || failed) return;
         const power = gaugeValueCurrent / POWER_MAX;
         const speed = power * MAX_SPEED;
         ball.vx = Math.cos(aimAngle) * speed;
         ball.vy = Math.sin(aimAngle) * speed;
         ball.moving = true;
-        shotsLeft--;
-        shotsFired++;
-        stopGaugeAnimation();
-        updateButtons();
-        updateHUD();
+        shotsLeft--; shotsFired++;
+        stopGauge();
+        updateHUD(); updateButtons();
         moveBall();
     }
-
     function moveBall() {
         if (!ball.moving) return;
-        ball.vx *= FRICTION;
-        ball.vy *= FRICTION;
-        const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
-        if (speed < MIN_SPEED) {
-            ball.moving = false;
-            ball.vx = 0; ball.vy = 0;
-            pathPoints.push({x: ball.x, y: ball.y});
-            checkEndOfShot();
-            return;
+        ball.vx *= FRICTION; ball.vy *= FRICTION;
+        const sp = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+        if (sp < MIN_SPEED) {
+            ball.moving = false; ball.vx = 0; ball.vy = 0;
+            pathPoints.push({x:ball.x, y:ball.y});
+            checkEndOfShot(); return;
         }
-        const prevX = ball.x, prevY = ball.y;
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-        if (ball.x < BALL_RADIUS + WALL_THICKNESS) {
-            ball.x = BALL_RADIUS + WALL_THICKNESS;
-            ball.vx = Math.abs(ball.vx) * 0.9;
-        } else if (ball.x > BOARD_W - BALL_RADIUS - WALL_THICKNESS) {
-            ball.x = BOARD_W - BALL_RADIUS - WALL_THICKNESS;
-            ball.vx = -Math.abs(ball.vx) * 0.9;
+        const px = ball.x, py = ball.y;
+        ball.x += ball.vx; ball.y += ball.vy;
+        if (ball.x < BALL_RADIUS+WALL_THICKNESS) { ball.x = BALL_RADIUS+WALL_THICKNESS; ball.vx = Math.abs(ball.vx)*0.9; }
+        else if (ball.x > BOARD_W-BALL_RADIUS-WALL_THICKNESS) { ball.x = BOARD_W-BALL_RADIUS-WALL_THICKNESS; ball.vx = -Math.abs(ball.vx)*0.9; }
+        if (ball.y < BALL_RADIUS+WALL_THICKNESS) { ball.y = BALL_RADIUS+WALL_THICKNESS; ball.vy = Math.abs(ball.vy)*0.9; }
+        else if (ball.y > BOARD_H-BALL_RADIUS-WALL_THICKNESS) { ball.y = BOARD_H-BALL_RADIUS-WALL_THICKNESS; ball.vy = -Math.abs(ball.vy)*0.9; }
+        if (shotsFired > 1 && checkFailure(px, py, ball.x, ball.y)) {
+            ball.moving = false; ball.vx = 0; ball.vy = 0;
+            if (animId) cancelAnimationFrame(animId);
+            handleFailure(); return;
         }
-        if (ball.y < BALL_RADIUS + WALL_THICKNESS) {
-            ball.y = BALL_RADIUS + WALL_THICKNESS;
-            ball.vy = Math.abs(ball.vy) * 0.9;
-        } else if (ball.y > BOARD_H - BALL_RADIUS - WALL_THICKNESS) {
-            ball.y = BOARD_H - BALL_RADIUS - WALL_THICKNESS;
-            ball.vy = -Math.abs(ball.vy) * 0.9;
-        }
-        if (shotsFired > 1) {
-            if (checkFailure(prevX, prevY, ball.x, ball.y)) {
-                ball.moving = false;
-                ball.vx = 0; ball.vy = 0;
-                if (animId) cancelAnimationFrame(animId);
-                handleFailure();
-                return;
-            }
-        }
-        paintTrailToTemp(prevX, prevY, ball.x, ball.y);
+        paintTrail(px, py, ball.x, ball.y);
         animId = requestAnimationFrame(moveBall);
         draw();
     }
 
-    function isInsideMyTerritory(x, y) {
-        const px = Math.floor(x);
-        const py = Math.floor(y);
+    // ★ 내 영역 확인 (currentPlayer 기준)
+    function isMyTerritory(x, y) {
+        const px = Math.floor(x), py = Math.floor(y);
         if (px < 0 || px >= BOARD_W || py < 0 || py >= BOARD_H) return false;
         return territoryMap[py * BOARD_W + px] === currentPlayer;
     }
 
     function checkFailure(x1, y1, x2, y2) {
-        const safeDistSq = SAFE_DIST_FROM_START * SAFE_DIST_FROM_START;
-        const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
+        const safe = SAFE_DIST_FROM_START * SAFE_DIST_FROM_START;
+        const steps = Math.ceil(Math.sqrt((x2-x1)**2 + (y2-y1)**2) / 2);
         for (let i = 1; i < steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideMyTerritory(px, py)) continue;
-            const dx0 = px - x1, dy0 = py - y1;
-            if (dx0*dx0 + dy0*dy0 < safeDistSq) continue;
+            if (isMyTerritory(px, py)) continue;
+            const dx = px-x1, dy = py-y1;
+            if (dx*dx + dy*dy < safe) continue;
             const idx = py * BOARD_W + px;
             if (territoryMap[idx] === currentPlayer) return true;
             if (wallMap[idx] === 1 || tempWallMap[idx] === 1) return true;
@@ -596,248 +498,174 @@
         return false;
     }
 
-    function paintTrailToTemp(x1, y1, x2, y2) {
-        const steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)) / 2);
+    function paintTrail(x1, y1, x2, y2) {
+        const steps = Math.ceil(Math.sqrt((x2-x1)**2 + (y2-y1)**2) / 2);
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const px = Math.floor(x1 + (x2-x1)*t);
             const py = Math.floor(y1 + (y2-y1)*t);
-            if (isInsideMyTerritory(px, py)) continue;
+            if (isMyTerritory(px, py)) continue;
             for (let dy = -TRAIL_THICKNESS; dy <= TRAIL_THICKNESS; dy++) {
                 for (let dx = -TRAIL_THICKNESS; dx <= TRAIL_THICKNESS; dx++) {
-                    const nx = px + dx;
-                    const ny = py + dy;
+                    const nx = px+dx, ny = py+dy;
                     if (nx < WALL_THICKNESS || nx >= BOARD_W-WALL_THICKNESS || ny < WALL_THICKNESS || ny >= BOARD_H-WALL_THICKNESS) continue;
-                    if (dx*dx + dy*dy <= TRAIL_THICKNESS*TRAIL_THICKNESS) {
-                        tempWallMap[ny*BOARD_W + nx] = 1;
-                    }
+                    if (dx*dx + dy*dy <= TRAIL_THICKNESS*TRAIL_THICKNESS) tempWallMap[ny*BOARD_W+nx] = 1;
                 }
             }
         }
     }
 
     function handleFailure() {
-        failed = true;
-        turnInProgress = false;
+        failed = true; turnInProgress = false;
         if (animId) cancelAnimationFrame(animId);
-        tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
+        tempWallMap = new Uint8Array(BOARD_W*BOARD_H);
         pathPoints = [];
-        stopGaugeAnimation();
-        updateButtons();
-        updateHUD();
-        draw();
-        setTimeout(() => {
-            if (!gameOver) endTurn(false);
-        }, 300);
+        stopGauge(); updateButtons(); updateHUD(); draw();
+        setTimeout(() => { if (!gameOver) endTurn(false); }, 300);
     }
 
     function checkEndOfShot() {
-        if (isInsideMyTerritory(ball.x, ball.y)) {
+        if (isMyTerritory(ball.x, ball.y)) {
             if (hasLeftBase) {
-                // ★ 영역 획득 → 즉시 draw → 토스트 → 턴 전환
                 acquireTerritory();
-                updateHUD();  // 점수 갱신
-                draw();       // ★ 즉시 화면 갱신
-                showSuccessToast();
-                setTimeout(() => {
-                    endTurn(true);
-                }, 500);
-            } else {
-                tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
-                pathPoints = [];
-                draw();
                 updateHUD();
+                draw();  // ★ 즉시 갱신
+                showSuccessToast();
+                setTimeout(() => endTurn(true), 400);
+            } else {
+                tempWallMap = new Uint8Array(BOARD_W*BOARD_H);
+                pathPoints = [];
+                draw(); updateHUD();
             }
         } else if (shotsLeft <= 0) {
             endTurn(false);
         } else {
-            if (!hasLeftBase) {
-                hasLeftBase = true;
-            }
+            if (!hasLeftBase) hasLeftBase = true;
             turnInProgress = true;
-            startGaugeAnimation();
-            updateButtons();
-            updateHUD();
-            draw();
+            startGauge();
+            updateButtons(); updateHUD(); draw();
         }
     }
 
     function showSuccessToast() {
         successToast.style.opacity = '1';
-        setTimeout(() => {
-            successToast.style.opacity = '0';
-        }, 1000);
+        setTimeout(() => successToast.style.opacity = '0', 800);
     }
 
+    // ★ 영역 획득 - currentPlayer 색으로 채움
     function acquireTerritory() {
-        // 1. 임시 벽을 영구 벽에 합치기
+        // 임시 벽 → 영구 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (tempWallMap[i] === 1) wallMap[i] = 1;
         }
-
-        // 2. Flood Fill
+        // Flood Fill
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [];
-        const startX = Math.floor(BASE1_X);
-        const startY = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
-        const startIdx = startY * BOARD_W + startX;
-        visited[startIdx] = 1;
-        queue.push(startIdx);
-
+        const sx = Math.floor(BASE1_X);
+        const sy = currentPlayer === P1 ? BASE1_Y : BASE2_Y;
+        const sidx = sy * BOARD_W + sx;
+        visited[sidx] = 1; queue.push(sidx);
         const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
         while (queue.length > 0) {
             const idx = queue.shift();
-            const x = idx % BOARD_W;
-            const y = Math.floor(idx / BOARD_W);
+            const x = idx % BOARD_W, y = Math.floor(idx / BOARD_W);
             for (const [dx, dy] of dirs) {
-                const nx = x + dx;
-                const ny = y + dy;
+                const nx = x+dx, ny = y+dy;
                 if (nx < 0 || nx >= BOARD_W || ny < 0 || ny >= BOARD_H) continue;
-                const nIdx = ny * BOARD_W + nx;
-                if (visited[nIdx]) continue;
-                if (wallMap[nIdx] === 1) continue;
-                if (territoryMap[nIdx] !== NEUTRAL && territoryMap[nIdx] !== currentPlayer) continue;
-                visited[nIdx] = 1;
-                queue.push(nIdx);
+                const nidx = ny * BOARD_W + nx;
+                if (visited[nidx]) continue;
+                if (wallMap[nidx] === 1) continue;
+                if (territoryMap[nidx] !== NEUTRAL && territoryMap[nidx] !== currentPlayer) continue;
+                visited[nidx] = 1; queue.push(nidx);
             }
         }
-
-        // 3. 방문하지 않은 중립 영역을 currentPlayer 색으로 채움
-        let changedCount = 0;
+        // 중립 영역 채우기
+        let count = 0;
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i] && territoryMap[i] === NEUTRAL) {
-                territoryMap[i] = currentPlayer;
-                changedCount++;
+                territoryMap[i] = currentPlayer;  // ★ P1=1(초록), P2=2(빨강)
+                count++;
             }
         }
-
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
-        console.log(`🎉 ${currentPlayer === P1 ? 'P1' : 'P2'} 영역 획득! 채운 픽셀: ${changedCount}`);
+        console.log(`🎉 ${currentPlayer === P1 ? 'P1(초록)' : 'P2(빨강)'} 영역 ${count}px 획득`);
     }
 
     function endTurn(success) {
         turnInProgress = false;
-        ball.moving = false;
-        ball.vx = 0; ball.vy = 0;
+        ball.moving = false; ball.vx = 0; ball.vy = 0;
         if (animId) cancelAnimationFrame(animId);
-        if (!success) {
-            tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
-        }
+        if (!success) tempWallMap = new Uint8Array(BOARD_W*BOARD_H);
         pathPoints = [];
-        stopGaugeAnimation();
-        updateButtons();
-        updateHUD();
+        stopGauge(); updateButtons(); updateHUD();
 
-        let p1BaseLost = 0, p2BaseLost = 0;
-        for (let y = Math.floor(BASE1_Y - BASE_SIZE/2); y <= Math.ceil(BASE1_Y + BASE_SIZE/2); y++) {
-            for (let x = Math.floor(BASE1_X - BASE_SIZE/2); x <= Math.ceil(BASE1_X + BASE_SIZE/2); x++) {
-                if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
-                if (territoryMap[y*BOARD_W + x] !== P1) p1BaseLost++;
+        let p1Lost = 0, p2Lost = 0;
+        for (let y = Math.floor(BASE1_Y-BASE_SIZE/2); y <= Math.ceil(BASE1_Y+BASE_SIZE/2); y++) {
+            for (let x = Math.floor(BASE1_X-BASE_SIZE/2); x <= Math.ceil(BASE1_X+BASE_SIZE/2); x++) {
+                if (x<0||x>=BOARD_W||y<0||y>=BOARD_H) continue;
+                if (territoryMap[y*BOARD_W+x] !== P1) p1Lost++;
             }
         }
-        for (let y = Math.floor(BASE2_Y - BASE_SIZE/2); y <= Math.ceil(BASE2_Y + BASE_SIZE/2); y++) {
-            for (let x = Math.floor(BASE2_X - BASE_SIZE/2); x <= Math.ceil(BASE2_X + BASE_SIZE/2); x++) {
-                if (x<0 || x>=BOARD_W || y<0 || y>=BOARD_H) continue;
-                if (territoryMap[y*BOARD_W + x] !== P2) p2BaseLost++;
+        for (let y = Math.floor(BASE2_Y-BASE_SIZE/2); y <= Math.ceil(BASE2_Y+BASE_SIZE/2); y++) {
+            for (let x = Math.floor(BASE2_X-BASE_SIZE/2); x <= Math.ceil(BASE2_X+BASE_SIZE/2); x++) {
+                if (x<0||x>=BOARD_W||y<0||y>=BOARD_H) continue;
+                if (territoryMap[y*BOARD_W+x] !== P2) p2Lost++;
             }
         }
-        if (p1BaseLost / BASE_AREA > BASE_LOSS_RATIO) {
-            gameOver = true;
-            showGameOver(false, 'P1 기지 50% 이상 빼앗김!');
-            return;
-        } else if (p2BaseLost / BASE_AREA > BASE_LOSS_RATIO) {
-            gameOver = true;
-            showGameOver(true, 'P2 기지 50% 이상 빼앗음!');
-            return;
-        }
+        if (p1Lost / BASE_AREA > BASE_LOSS_RATIO) { gameOver = true; showGameOver(false, 'P1 기지 50% 이상 빼앗김!'); return; }
+        if (p2Lost / BASE_AREA > BASE_LOSS_RATIO) { gameOver = true; showGameOver(true, 'P2 기지 50% 이상 빼앗음!'); return; }
+
         currentPlayer = currentPlayer === P1 ? P2 : P1;
         resetBall();
         draw();
     }
 
-    function showGameOver(playerWon, reason) {
-        overlayTitle.textContent = playerWon ? '🎉 P1 승리!' : '🎉 P2 승리!';
+    function showGameOver(won, reason) {
+        overlayTitle.textContent = won ? '🎉 P1 승리!' : '🎉 P2 승리!';
         overlayDesc.textContent = reason;
         overlay.classList.add('active');
         draw();
     }
 
-    function getBoardCoords(clientX, clientY) {
+    function getCoords(cx, cy) {
         const rect = canvas.getBoundingClientRect();
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
+        return { x: (cx-rect.left)*scaleX, y: (cy-rect.top)*scaleY };
     }
 
-    function handleTouchStart(e) {
+    canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         if (gameOver || ball.moving || !turnInProgress) return;
-        const touch = e.touches[0];
-        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
-        if (placingMode) {
-            if (isInsideMyTerritory(x, y)) {
-                ball.x = x;
-                ball.y = y;
-                draw();
-                updateHUD();
-            }
+        const t = e.touches[0];
+        const {x, y} = getCoords(t.clientX, t.clientY);
+        if (placingMode && isMyTerritory(x, y)) {
+            ball.x = x; ball.y = y;
+            draw(); updateHUD();
         }
-    }
-
-    function handleMouseDown(e) {
+    }, {passive:false});
+    canvas.addEventListener('touchmove', (e) => e.preventDefault(), {passive:false});
+    canvas.addEventListener('touchend', (e) => e.preventDefault(), {passive:false});
+    canvas.addEventListener('mousedown', (e) => {
         if (gameOver || ball.moving || !turnInProgress) return;
-        const { x, y } = getBoardCoords(e.clientX, e.clientY);
-        if (placingMode) {
-            if (isInsideMyTerritory(x, y)) {
-                ball.x = x;
-                ball.y = y;
-                draw();
-                updateHUD();
-            }
+        const {x, y} = getCoords(e.clientX, e.clientY);
+        if (placingMode && isMyTerritory(x, y)) {
+            ball.x = x; ball.y = y;
+            draw(); updateHUD();
         }
-    }
-
-    canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive:false});
-    canvas.addEventListener('touchend', (e) => { e.preventDefault(); }, {passive:false});
-    canvas.addEventListener('mousedown', handleMouseDown);
+    });
 
     btnConfirm.addEventListener('click', confirmPosition);
-    btnConfirm.addEventListener('touchend', (e) => { e.preventDefault(); confirmPosition(); });
     btnCancel.addEventListener('click', cancelPosition);
-    btnCancel.addEventListener('touchend', (e) => { e.preventDefault(); cancelPosition(); });
     btnFire.addEventListener('click', launchBall);
-    btnFire.addEventListener('touchend', (e) => { e.preventDefault(); launchBall(); });
+    btnRestart.addEventListener('click', initGame);
 
-    btnRestart.addEventListener('click', () => { initGame(); });
-    btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
-
-    window.addEventListener('resize', () => {
-        resizeCanvas();
-        initDial();
-        if (territoryMap) {
-            initTerritory();
-            resetBall();
-            draw();
-        }
-    });
-    window.addEventListener('orientationchange', () => {
-        setTimeout(() => {
-            resizeCanvas();
-            initDial();
-            if (territoryMap) {
-                initTerritory();
-                resetBall();
-                draw();
-            }
-        }, 300);
-    });
+    window.addEventListener('resize', () => { resizeCanvas(); initDial(); if (territoryMap) { initTerritory(); resetBall(); draw(); } });
+    window.addEventListener('orientationchange', () => setTimeout(() => { resizeCanvas(); initDial(); if (territoryMap) { initTerritory(); resetBall(); draw(); } }, 300));
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.7 - 영역 색상 즉시 갱신 보장');
+    console.log('🏆 땅따먹기 v10.0 - 전면 개선판');
+    console.log(`📐 맵: ${BOARD_W}×${BOARD_H} | 기지: ${BASE_SIZE}×${BASE_SIZE} (${(BASE_SIZE*BASE_SIZE/(BOARD_W*BOARD_H)*100).toFixed(1)}%)`);
 })();
 </script>
 </body>
