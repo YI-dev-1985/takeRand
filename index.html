@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.2</title>
+    <title>땅따먹기 v9.3</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -61,7 +61,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.2</div>
+            <div id="version-badge">v9.3</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -110,10 +110,10 @@
     const btnCancel = document.getElementById('btn-cancel');
     const successToast = document.getElementById('success-toast');
 
-    // ===== 게임 설정 =====
-    const BOARD_W = 800;
-    const BOARD_H = 500;
-    const BASE_SIZE = 90;  // 게임 좌표계 기준 정사각형
+    // ===== 동적 맵 크기 =====
+    let BOARD_W = 800;
+    let BOARD_H = 500;
+    const BASE_SIZE = 90;
     const BALL_RADIUS = 5;
     const WALL_THICKNESS = 2;
     const FRICTION = 0.99;
@@ -128,10 +128,8 @@
     const P1 = 1, P2 = 2;
     const NEUTRAL = 0;
 
-    const BASE1_X = BOARD_W/2, BASE1_Y = BASE_SIZE/2;
-    const BASE2_X = BOARD_W/2, BASE2_Y = BOARD_H - BASE_SIZE/2;
-    const TOTAL_AREA = BOARD_W * BOARD_H;
-    const BASE_AREA = BASE_SIZE * BASE_SIZE;
+    let BASE1_X, BASE1_Y, BASE2_X, BASE2_Y;
+    let TOTAL_AREA, BASE_AREA;
 
     let territoryMap = null;
     let wallMap = null;
@@ -147,7 +145,7 @@
     let placingMode = true;
     let failed = false;
 
-    let ball = { x: BASE1_X, y: BASE1_Y, vx: 0, vy: 0, moving: false };
+    let ball = { x: 0, y: 0, vx: 0, vy: 0, moving: false };
 
     let isAiming = false;
     let aimStartX = 0, aimStartY = 0;
@@ -163,44 +161,44 @@
     let scaleX = 1, scaleY = 1;
     let animId = null;
 
-    // ===== 초기화 =====
+    // ===== 화면 비율에 맞게 맵 크기 조정 =====
+    function adjustBoardSize() {
+        const wrapper = document.getElementById('board-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        const availW = Math.max(100, rect.width - 4);
+        const availH = Math.max(100, rect.height - 4);
+        
+        const aspectRatio = availW / availH;
+        
+        // 화면 비율에 맞게 BOARD_W와 BOARD_H 설정
+        if (aspectRatio > 1.6) {
+            // 가로가 더 긴 경우
+            BOARD_H = 500;
+            BOARD_W = Math.floor(500 * aspectRatio);
+        } else {
+            // 세로가 더 긴 경우
+            BOARD_W = 800;
+            BOARD_H = Math.floor(800 / aspectRatio);
+        }
+        
+        BASE1_X = BOARD_W / 2;
+        BASE1_Y = BASE_SIZE / 2;
+        BASE2_X = BOARD_W / 2;
+        BASE2_Y = BOARD_H - BASE_SIZE / 2;
+        TOTAL_AREA = BOARD_W * BOARD_H;
+        BASE_AREA = BASE_SIZE * BASE_SIZE;
+        
+        console.log(`📐 맵 크기: ${BOARD_W}×${BOARD_H}, 비율: ${aspectRatio.toFixed(2)}`);
+    }
+
     function initTerritory() {
+        adjustBoardSize();
         territoryMap = new Uint8Array(BOARD_W * BOARD_H);
         wallMap = new Uint8Array(BOARD_W * BOARD_H);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
-        
-        // ★ 화면에서 정사각형으로 보이도록 게임 좌표를 조정
-        // cellW : cellH = BOARD_W/canvasW : BOARD_H/canvasH
-        // 정사각형이 되려면 게임 좌표에서 X 크기와 Y 크기가 달라야 함
-        // 화면 비율: canvasW/canvasH
-        // 게임 비율: BOARD_W/BOARD_H = 800/500 = 1.6
-        // 화면에 정사각형을 그리려면: 
-        //   screenSize = BASE_SIZE * min(cellW, cellH)
-        //   gameXSize = BASE_SIZE * (cellW/min(cellW,cellH))
-        //   gameYSize = BASE_SIZE * (cellH/min(cellW,cellH))
-        // cellW = canvasW/BOARD_W, cellH = canvasH/BOARD_H
-        // min(cellW, cellH) = cellH (세로가 더 작음)
-        // gameXSize = BASE_SIZE * (cellW/cellH) = BASE_SIZE * (canvasW/BOARD_W) / (canvasH/BOARD_H)
-        // = BASE_SIZE * (canvasW * BOARD_H) / (canvasH * BOARD_W)
-        
-        // 실제 화면 비율을 계산
-        const wrapper = document.getElementById('board-wrapper');
-        const rect = wrapper.getBoundingClientRect();
-        const actualW = rect.width - 4;
-        const actualH = rect.height - 4;
-        const aspectRatio = actualW / actualH;
-        
-        // 게임 좌표에서 정사각형이 되려면
-        const gameAspectRatio = BOARD_W / BOARD_H;
-        const scaleRatio = aspectRatio / gameAspectRatio;
-        
-        // 게임 좌표에서 X와 Y 크기를 다르게 설정
-        const baseSizeX = BASE_SIZE * Math.max(1, scaleRatio);
-        const baseSizeY = BASE_SIZE * Math.max(1, 1/scaleRatio);
-        
-        fillRectToMap(territoryMap, BASE1_X - baseSizeX/2, BASE1_Y - baseSizeY/2, baseSizeX, baseSizeY, P1);
-        fillRectToMap(territoryMap, BASE2_X - baseSizeX/2, BASE2_Y - baseSizeY/2, baseSizeX, baseSizeY, P2);
+        fillRectToMap(territoryMap, BASE1_X - BASE_SIZE/2, BASE1_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P1);
+        fillRectToMap(territoryMap, BASE2_X - BASE_SIZE/2, BASE2_Y - BASE_SIZE/2, BASE_SIZE, BASE_SIZE, P2);
     }
 
     function fillRectToMap(map, x, y, w, h, owner) {
@@ -367,14 +365,12 @@
         const base2ScreenY = BASE2_Y * cellH;
         const base2ScreenSize = BASE_SIZE * scaleFactor;
 
-        // P1 기지
         ctx.fillStyle = 'rgba(78, 204, 163, 0.9)';
         ctx.fillRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(base1ScreenX - base1ScreenSize/2, base1ScreenY - base1ScreenSize/2, base1ScreenSize, base1ScreenSize);
 
-        // P2 기지
         ctx.fillStyle = 'rgba(255, 107, 107, 0.9)';
         ctx.fillRect(base2ScreenX - base2ScreenSize/2, base2ScreenY - base2ScreenSize/2, base2ScreenSize, base2ScreenSize);
         ctx.strokeStyle = '#fff';
@@ -824,12 +820,29 @@
     btnRestart.addEventListener('click', () => { initGame(); });
     btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
 
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        // 화면 크기 변경 시 맵 재조정
+        if (territoryMap) {
+            initTerritory();
+            resetBall();
+            draw();
+        }
+    });
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+            resizeCanvas();
+            if (territoryMap) {
+                initTerritory();
+                resetBall();
+                draw();
+            }
+        }, 300);
+    });
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.2 - 진짜 정사각형 기지');
+    console.log('🏆 땅따먹기 v9.3 - 화면 비율에 맞는 맵');
 })();
 </script>
 </body>
