@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.6</title>
+    <title>땅따먹기 v9.7</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -64,7 +64,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.6</div>
+            <div id="version-badge">v9.7</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -397,19 +397,22 @@
         const cellW = canvasW / BOARD_W;
         const cellH = canvasH / BOARD_H;
 
+        // ★ 영역을 한 번에 그리기 (성능 + 정확성)
         for (let r = 0; r < BOARD_H; r++) {
             for (let c = 0; c < BOARD_W; c++) {
                 const idx = r * BOARD_W + c;
-                if (territoryMap[idx] === P1) {
+                const val = territoryMap[idx];
+                if (val === P1) {
                     ctx.fillStyle = '#4ecca3';
                     ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
-                } else if (territoryMap[idx] === P2) {
+                } else if (val === P2) {
                     ctx.fillStyle = '#ff6b6b';
                     ctx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
                 }
             }
         }
 
+        // 벽
         for (let i = 0; i < wallMap.length; i++) {
             if (wallMap[i] === 1 || tempWallMap[i] === 1) {
                 const x = i % BOARD_W;
@@ -633,11 +636,12 @@
             if (hasLeftBase) {
                 // ★ 영역 획득 → 즉시 draw → 토스트 → 턴 전환
                 acquireTerritory();
-                draw();  // ★ 즉시 화면 갱신
+                updateHUD();  // 점수 갱신
+                draw();       // ★ 즉시 화면 갱신
                 showSuccessToast();
                 setTimeout(() => {
                     endTurn(true);
-                }, 300);
+                }, 500);
             } else {
                 tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
                 pathPoints = [];
@@ -699,14 +703,17 @@
         }
 
         // 3. 방문하지 않은 중립 영역을 currentPlayer 색으로 채움
+        let changedCount = 0;
         for (let i = 0; i < territoryMap.length; i++) {
             if (!visited[i] && territoryMap[i] === NEUTRAL) {
-                territoryMap[i] = currentPlayer;  // ★ P1이면 1, P2면 2
+                territoryMap[i] = currentPlayer;
+                changedCount++;
             }
         }
 
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
+        console.log(`🎉 ${currentPlayer === P1 ? 'P1' : 'P2'} 영역 획득! 채운 픽셀: ${changedCount}`);
     }
 
     function endTurn(success) {
@@ -830,7 +837,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.6 - 영역 색상 즉시 갱신 & P2 색상');
+    console.log('🏆 땅따먹기 v9.7 - 영역 색상 즉시 갱신 보장');
 })();
 </script>
 </body>
