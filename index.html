@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v9.4</title>
+    <title>땅따먹기 v9.5</title>
     <style>
         :root {
             --bg: #0f0f1a;
@@ -34,17 +34,20 @@
         #overlay-desc { color:#ccc; margin-bottom:10px; text-align:center; padding:0 12px; font-size:14px; }
         #btn-restart { padding:10px 28px; font-size:16px; font-weight:700; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
         #btn-restart:active { transform:scale(0.95); }
-        #controls { display:flex; align-items:center; gap:6px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; flex-wrap:wrap; }
+        #controls { display:flex; align-items:center; gap:8px; width:100%; padding:6px 10px; background:var(--panel); border-radius:10px; flex-wrap:wrap; }
         #gauge-wrapper { display:flex; align-items:center; gap:4px; flex:1; min-width:120px; }
         #gauge-bar-bg { flex:1; height:14px; background:#333; border-radius:7px; overflow:hidden; }
         #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #55ff55, #ffaa00, #ff5555); border-radius:7px; }
         #gauge-value { font-size:15px; font-weight:900; color:#fff; min-width:38px; text-align:center; }
-        .btn { padding:8px 18px; font-size:16px; font-weight:900; border:none; border-radius:20px; cursor:pointer; }
+        .btn { padding:8px 16px; font-size:14px; font-weight:900; border:none; border-radius:20px; cursor:pointer; }
         .btn:active { transform:scale(0.95); }
         .btn:disabled { background:#555; color:#999; opacity:0.5; }
         #btn-confirm { background:var(--confirm); color:#fff; }
         #btn-cancel { background:var(--cancel); color:#fff; }
         #btn-fire { background:var(--button); color:#000; padding:8px 24px; font-size:18px; }
+        #dial-wrapper { position:relative; width:60px; height:60px; }
+        #dial { width:60px; height:60px; border-radius:50%; background:#333; border:3px solid #555; cursor:pointer; touch-action:none; }
+        #dial-arrow { position:absolute; top:50%; left:50%; width:2px; height:24px; background:#ffd700; transform-origin:bottom center; transform:translate(-50%, -100%); }
         #instructions { color:#777; font-size:10px; text-align:center; }
         #success-toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(78,204,163,0.9); color:#fff; padding:16px 32px; border-radius:16px; font-size:24px; font-weight:900; z-index:20; pointer-events:none; opacity:0; transition:opacity 0.3s; }
     </style>
@@ -61,7 +64,7 @@
         </div>
         <div style="text-align:center;">
             <div id="turn-info"></div>
-            <div id="version-badge">v9.4</div>
+            <div id="version-badge">v9.5</div>
         </div>
         <div class="hud-side">
             <div style="text-align:right;">
@@ -86,11 +89,15 @@
             <div id="gauge-bar-bg"><div id="gauge-bar"></div></div>
             <span id="gauge-value">5.0</span>
         </div>
+        <div id="dial-wrapper">
+            <div id="dial"></div>
+            <div id="dial-arrow"></div>
+        </div>
         <button class="btn" id="btn-confirm">✅ 위치 완료</button>
         <button class="btn" id="btn-cancel">🔄 재설정</button>
         <button class="btn" id="btn-fire">🚀 발사</button>
     </div>
-    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 공 근처에서 드래그 → 발사</div>
+    <div id="instructions">👆 내 영역 터치 → 위치 완료 → 다이얼로 방향 설정 → 발사</div>
 </div>
 <script>
 (function() {
@@ -109,6 +116,8 @@
     const btnConfirm = document.getElementById('btn-confirm');
     const btnCancel = document.getElementById('btn-cancel');
     const successToast = document.getElementById('success-toast');
+    const dial = document.getElementById('dial');
+    const dialArrow = document.getElementById('dial-arrow');
 
     let BOARD_W = 800;
     let BOARD_H = 500;
@@ -143,13 +152,12 @@
     let turnInProgress = false;
     let placingMode = true;
     let failed = false;
+    let aimAngle = 0;  // 라디안
 
     let ball = { x: 0, y: 0, vx: 0, vy: 0, moving: false };
 
     let isAiming = false;
-    let aimStartX = 0, aimStartY = 0;
-    let aimCurrentX = 0, aimCurrentY = 0;
-    let aimAngle = 0;
+    let dialAngle = 0;  // 도 단위
 
     let gaugeAnimId = null;
     let gaugeDirection = 1;
@@ -159,6 +167,65 @@
     let dpr = 1;
     let scaleX = 1, scaleY = 1;
     let animId = null;
+
+    // ===== 다이얼 조작 =====
+    let dialDragging = false;
+    let dialCenterX = 0, dialCenterY = 0;
+
+    function initDial() {
+        const rect = dial.getBoundingClientRect();
+        dialCenterX = rect.left + rect.width / 2;
+        dialCenterY = rect.top + rect.height / 2;
+    }
+
+    function updateDialArrow() {
+        dialArrow.style.transform = `translate(-50%, -100%) rotate(${dialAngle}deg)`;
+        dialArrow.style.transformOrigin = 'bottom center';
+    }
+
+    function getDialAngle(clientX, clientY) {
+        const dx = clientX - dialCenterX;
+        const dy = clientY - dialCenterY;
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        angle = (angle + 90 + 360) % 360;  // 0도 = 위쪽
+        return angle;
+    }
+
+    function handleDialStart(e) {
+        e.preventDefault();
+        if (placingMode || ball.moving || gameOver || !turnInProgress) return;
+        dialDragging = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dialAngle = getDialAngle(clientX, clientY);
+        aimAngle = dialAngle * (Math.PI / 180);
+        updateDialArrow();
+        draw();
+    }
+
+    function handleDialMove(e) {
+        e.preventDefault();
+        if (!dialDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        dialAngle = getDialAngle(clientX, clientY);
+        aimAngle = dialAngle * (Math.PI / 180);
+        updateDialArrow();
+        draw();
+    }
+
+    function handleDialEnd(e) {
+        e.preventDefault();
+        dialDragging = false;
+    }
+
+    dial.addEventListener('touchstart', handleDialStart, {passive:false});
+    dial.addEventListener('touchmove', handleDialMove, {passive:false});
+    dial.addEventListener('touchend', handleDialEnd, {passive:false});
+    dial.addEventListener('mousedown', handleDialStart);
+    dial.addEventListener('mousemove', handleDialMove);
+    dial.addEventListener('mouseup', handleDialEnd);
+    dial.addEventListener('mouseleave', handleDialEnd);
 
     function adjustBoardSize() {
         const wrapper = document.getElementById('board-wrapper');
@@ -220,6 +287,9 @@
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
         isAiming = false;
+        dialAngle = 0;
+        aimAngle = 0;
+        updateDialArrow();
         gaugeValueCurrent = 5;
         updateHUD();
         updateGaugeUI();
@@ -235,10 +305,10 @@
         overlay.classList.remove('active');
         if (animId) cancelAnimationFrame(animId);
         if (gaugeAnimId) cancelAnimationFrame(gaugeAnimId);
+        initDial();
         draw();
     }
 
-    // ★ 버튼 상태 업데이트 수정
     function updateButtons() {
         if (placingMode) {
             btnConfirm.disabled = false;
@@ -247,8 +317,7 @@
         } else {
             btnConfirm.disabled = true;
             btnCancel.disabled = false;
-            // isAiming이 true일 때만 발사 버튼 활성화
-            btnFire.disabled = !isAiming;
+            btnFire.disabled = false;  // 발사 모드에서는 항상 활성화
         }
     }
 
@@ -264,8 +333,7 @@
         let status = '';
         if (placingMode) status = ' 공 배치: 내 영역 터치';
         else if (failed) status = ' 실패!';
-        else if (isAiming) status = ' 방향 설정 중 - 발사 버튼 클릭!';
-        else status = ' 공 근처에서 드래그하여 방향 설정';
+        else status = ` 남은 발사: ${shotsLeft} | 방향: ${dialAngle}°`;
         turnInfoEl.textContent = playerName + ' ' + status;
     }
 
@@ -277,7 +345,7 @@
     function startGaugeAnimation() {
         if (gaugeAnimId) cancelAnimationFrame(gaugeAnimId);
         function animateGauge() {
-            if (!isAiming || gameOver || !turnInProgress || ball.moving) {
+            if (placingMode || gameOver || !turnInProgress || ball.moving) {
                 gaugeAnimId = null;
                 return;
             }
@@ -385,6 +453,30 @@
         const ballScreenX = ball.x * cellW;
         const ballScreenY = ball.y * cellH;
         const ballScreenR = BALL_RADIUS * scaleFactor;
+
+        // ★ 방향 화살표 (발사 모드에서만)
+        if (!placingMode && !ball.moving && !gameOver) {
+            const arrowLen = 20 * scaleFactor;
+            const arrowX = ballScreenX + Math.cos(aimAngle) * arrowLen;
+            const arrowY = ballScreenY + Math.sin(aimAngle) * arrowLen;
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(ballScreenX, ballScreenY);
+            ctx.lineTo(arrowX, arrowY);
+            ctx.stroke();
+            // 화살촉
+            const headLen = 6 * scaleFactor;
+            const headAngle = 0.5;
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - headLen * Math.cos(aimAngle - headAngle), arrowY - headLen * Math.sin(aimAngle - headAngle));
+            ctx.lineTo(arrowX - headLen * Math.cos(aimAngle + headAngle), arrowY - headLen * Math.sin(aimAngle + headAngle));
+            ctx.closePath();
+            ctx.fill();
+        }
+
         ctx.shadowColor = 'rgba(255,255,255,0.9)';
         ctx.shadowBlur = 8;
         ctx.beginPath();
@@ -396,25 +488,6 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 조준선
-        if (isAiming && !placingMode && !ball.moving && !gameOver) {
-            const dx = aimStartX - aimCurrentX;
-            const dy = aimStartY - aimCurrentY;
-            const len = Math.sqrt(dx*dx + dy*dy);
-            if (len > 10) {
-                aimAngle = Math.atan2(dy, dx);
-                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([6, 6]);
-                ctx.beginPath();
-                ctx.moveTo(ballScreenX, ballScreenY);
-                ctx.lineTo(ballScreenX + Math.cos(aimAngle)*30*scaleFactor, ballScreenY + Math.sin(aimAngle)*30*scaleFactor);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
-
-        // 배치 모드 표시
         if (placingMode && !ball.moving && !gameOver) {
             ctx.strokeStyle = 'rgba(255,255,255,0.6)';
             ctx.lineWidth = 2;
@@ -424,21 +497,13 @@
             ctx.stroke();
             ctx.setLineDash([]);
         }
-
-        // 발사 모드 안내
-        if (!placingMode && !isAiming && !ball.moving && !gameOver) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.font = 'bold 14px -apple-system, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('공 근처에서 드래그하세요!', ballScreenX, ballScreenY - 25 * scaleFactor);
-        }
     }
 
-    // ★ 위치 완료 후 발사 모드
     function confirmPosition() {
         if (!placingMode || ball.moving || gameOver || !turnInProgress) return;
         placingMode = false;
         isAiming = false;
+        startGaugeAnimation();  // 게이지 시작
         updateHUD();
         updateButtons();
         draw();
@@ -455,7 +520,7 @@
     }
 
     function launchBall() {
-        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingMode || failed || !isAiming) return;
+        if (ball.moving || gameOver || !turnInProgress || shotsLeft <= 0 || placingMode || failed) return;
         const power = gaugeValueCurrent / POWER_MAX;
         const speed = power * MAX_SPEED;
         ball.vx = Math.cos(aimAngle) * speed;
@@ -463,7 +528,6 @@
         ball.moving = true;
         shotsLeft--;
         shotsFired++;
-        isAiming = false;
         stopGaugeAnimation();
         updateButtons();
         updateHUD();
@@ -482,11 +546,9 @@
             checkEndOfShot();
             return;
         }
-
         const prevX = ball.x, prevY = ball.y;
         ball.x += ball.vx;
         ball.y += ball.vy;
-
         if (ball.x < BALL_RADIUS + WALL_THICKNESS) {
             ball.x = BALL_RADIUS + WALL_THICKNESS;
             ball.vx = Math.abs(ball.vx) * 0.9;
@@ -501,7 +563,6 @@
             ball.y = BOARD_H - BALL_RADIUS - WALL_THICKNESS;
             ball.vy = -Math.abs(ball.vy) * 0.9;
         }
-
         if (shotsFired > 1) {
             if (checkFailure(prevX, prevY, ball.x, ball.y)) {
                 ball.moving = false;
@@ -511,7 +572,6 @@
                 return;
             }
         }
-
         paintTrailToTemp(prevX, prevY, ball.x, ball.y);
         animId = requestAnimationFrame(moveBall);
         draw();
@@ -567,7 +627,6 @@
         if (animId) cancelAnimationFrame(animId);
         tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         pathPoints = [];
-        isAiming = false;
         stopGaugeAnimation();
         updateButtons();
         updateHUD();
@@ -597,7 +656,7 @@
                 hasLeftBase = true;
             }
             turnInProgress = true;
-            isAiming = false;
+            startGaugeAnimation();
             updateButtons();
             updateHUD();
             draw();
@@ -657,7 +716,6 @@
             tempWallMap = new Uint8Array(BOARD_W * BOARD_H);
         }
         pathPoints = [];
-        isAiming = false;
         stopGaugeAnimation();
         updateButtons();
         updateHUD();
@@ -719,36 +777,6 @@
             }
             return;
         }
-
-        // ★ 발사 모드: 공 근처에서 드래그 시작
-        if (turnInProgress && !failed) {
-            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 5) {  // 범위 확대
-                isAiming = true;
-                aimStartX = x;
-                aimStartY = y;
-                aimCurrentX = x;
-                aimCurrentY = y;
-                updateButtons();
-                startGaugeAnimation();
-                updateHUD();
-                draw();
-            }
-        }
-    }
-
-    function handleTouchMove(e) {
-        e.preventDefault();
-        if (!isAiming) return;
-        const touch = e.touches[0];
-        const { x, y } = getBoardCoords(touch.clientX, touch.clientY);
-        aimCurrentX = x;
-        aimCurrentY = y;
-        draw();
-    }
-
-    function handleTouchEnd(e) {
-        e.preventDefault();
     }
 
     function handleMouseDown(e) {
@@ -761,65 +789,27 @@
                 draw();
                 updateHUD();
             }
-            return;
         }
-        if (turnInProgress && !failed) {
-            const distToBall = Math.sqrt((x-ball.x)*(x-ball.x) + (y-ball.y)*(y-ball.y));
-            if (distToBall < BALL_RADIUS * 5) {
-                isAiming = true;
-                aimStartX = x;
-                aimStartY = y;
-                aimCurrentX = x;
-                aimCurrentY = y;
-                updateButtons();
-                startGaugeAnimation();
-                updateHUD();
-                draw();
-            }
-        }
-    }
-
-    function handleMouseMove(e) {
-        if (!isAiming) return;
-        const { x, y } = getBoardCoords(e.clientX, e.clientY);
-        aimCurrentX = x;
-        aimCurrentY = y;
-        draw();
-    }
-
-    function handleMouseUp(e) {
-        // 발사는 버튼으로만
     }
 
     canvas.addEventListener('touchstart', handleTouchStart, {passive:false});
-    canvas.addEventListener('touchmove', handleTouchMove, {passive:false});
-    canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
-    canvas.addEventListener('touchcancel', handleTouchEnd, {passive:false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, {passive:false});
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); }, {passive:false});
     canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', handleMouseUp);
 
     btnConfirm.addEventListener('click', confirmPosition);
     btnConfirm.addEventListener('touchend', (e) => { e.preventDefault(); confirmPosition(); });
     btnCancel.addEventListener('click', cancelPosition);
     btnCancel.addEventListener('touchend', (e) => { e.preventDefault(); cancelPosition(); });
-    btnFire.addEventListener('click', () => {
-        if (isAiming && !ball.moving && turnInProgress && !placingMode && !failed) {
-            launchBall();
-        }
-    });
-    btnFire.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        if (isAiming && !ball.moving && turnInProgress && !placingMode && !failed) {
-            launchBall();
-        }
-    });
+    btnFire.addEventListener('click', launchBall);
+    btnFire.addEventListener('touchend', (e) => { e.preventDefault(); launchBall(); });
 
     btnRestart.addEventListener('click', () => { initGame(); });
     btnRestart.addEventListener('touchend', (e) => { e.preventDefault(); initGame(); });
 
     window.addEventListener('resize', () => {
         resizeCanvas();
+        initDial();
         if (territoryMap) {
             initTerritory();
             resetBall();
@@ -829,6 +819,7 @@
     window.addEventListener('orientationchange', () => {
         setTimeout(() => {
             resizeCanvas();
+            initDial();
             if (territoryMap) {
                 initTerritory();
                 resetBall();
@@ -839,7 +830,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v9.4 - 방향 조절 & 파워 게이지 활성화');
+    console.log('🏆 땅따먹기 v9.5 - 방향 다이얼');
 })();
 </script>
 </body>
