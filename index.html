@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v13.0</title>
+    <title>땅따먹기 v14.0</title>
     <style>
         :root {
             --bg: #1a1a2e; --panel: #16213e;
@@ -51,7 +51,7 @@
             <span style="font-size:20px;">🟢</span>
             <div><div class="hud-name" style="color:var(--player1);">P1</div><div class="hud-score" id="p1-score">0%</div></div>
         </div>
-        <div style="text-align:center;"><div id="turn-info"></div><div id="version-badge">v13.0</div></div>
+        <div style="text-align:center;"><div id="turn-info"></div><div id="version-badge">v14.0</div></div>
         <div class="hud-side">
             <div style="text-align:right;"><div class="hud-name" style="color:var(--player2);">P2</div><div class="hud-score" id="p2-score">0%</div></div>
             <span style="font-size:20px;">🔴</span>
@@ -94,7 +94,7 @@
     const BASE_SIZE = 90, BALL_RADIUS = 5, WALL_THICKNESS = 4;
     const FRICTION = 0.99, MAX_SPEED = 10, MIN_SPEED = 0.2;
     const MAX_SHOTS = 3, BASE_LOSS_RATIO = 0.5, POWER_MAX = 10;
-    const TRAIL_THICKNESS = 3;  // 두꺼운 벽
+    const TRAIL_THICKNESS = 3;
     const P1 = 1, P2 = 2, NEUTRAL = 0;
 
     let BOARD_W = 800, BOARD_H = 500;
@@ -102,7 +102,7 @@
 
     let offCanvas, offCtx, imgData;
     let territoryData, wallData;
-    let trailPoints = [];
+    let trailPoints = [];  // 이동 라인 저장
 
     let currentPlayer = P1;
     let shotsLeft = MAX_SHOTS;
@@ -130,7 +130,6 @@
         territoryData = new Uint8Array(BOARD_W * BOARD_H);
         wallData = new Uint8Array(BOARD_W * BOARD_H);
         trailPoints = [];
-        // 초기화 - 모두 중립
         for (let i = 0; i < territoryData.length; i++) {
             imgData.data[i*4] = 42;
             imgData.data[i*4+1] = 42;
@@ -149,9 +148,9 @@
         imgData.data[p+3]=255;
     }
 
-    // ★ 색칠 로직 완전 수정 - 벽을 확실히 막음
+    // ★ 색칠 로직 - 벽을 두껍게 확장하여 Flood Fill
     function floodFillAndPaint(startX, startY, owner) {
-        // 1. 벽 주변을 추가로 막음 (벽 두께 확장)
+        // 벽 확장 (Flood Fill이 벽을 통과하지 못하도록)
         const expandedWalls = new Uint8Array(BOARD_W * BOARD_H);
         for (let i = 0; i < wallData.length; i++) {
             if (wallData[i] === 1) {
@@ -167,7 +166,7 @@
             }
         }
 
-        // 2. Flood Fill (확장된 벽으로 막음)
+        // Flood Fill
         const visited = new Uint8Array(BOARD_W * BOARD_H);
         const queue = [startY * BOARD_W + startX];
         visited[startY * BOARD_W + startX] = 1;
@@ -187,7 +186,7 @@
             }
         }
 
-        // 3. 방문하지 않은 중립 영역을 owner 색으로
+        // 색칠
         let count = 0;
         for (let i = 0; i < territoryData.length; i++) {
             if (!visited[i] && territoryData[i] === NEUTRAL) {
@@ -200,9 +199,8 @@
             }
         }
 
-        // 4. 캔버스에 반영
         offCtx.putImageData(imgData, 0, 0);
-        console.log(`🎨 ${owner===P1?'P1(초록)':'P2(빨강)'} 영역 ${count}px 채움`);
+        console.log(`🎨 ${owner===P1?'P1(초록)':'P2(빨강)'} 영역 ${count}px 색칠 완료`);
         return count;
     }
 
@@ -266,7 +264,6 @@
         adjustBoard();
         initOffscreen();
         pathPoints = [];
-        // 기지 칠하기
         for (let r = 0; r < BASE_SIZE; r++) {
             for (let c = 0; c < BASE_SIZE; c++) {
                 paintPixel(Math.floor(BASE1_X-BASE_SIZE/2+c), Math.floor(BASE1_Y-BASE_SIZE/2+r), P1);
@@ -350,27 +347,29 @@
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0,0,canvasW,canvasH);
 
-        // 이동선
+        const cw = canvasW/BOARD_W, ch = canvasH/BOARD_H;
+
+        // ★ 이동 라인 그리기 (가장 먼저)
         if(trailPoints.length > 1) {
             ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([8,4]);
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.moveTo(trailPoints[0].x*canvasW/BOARD_W, trailPoints[0].y*canvasH/BOARD_H);
+            ctx.moveTo(trailPoints[0].x*cw, trailPoints[0].y*ch);
             for(let i=1;i<trailPoints.length;i++){
-                ctx.lineTo(trailPoints[i].x*canvasW/BOARD_W, trailPoints[i].y*canvasH/BOARD_H);
+                ctx.lineTo(trailPoints[i].x*cw, trailPoints[i].y*ch);
             }
             ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
         }
 
         // 영역
         ctx.drawImage(offCanvas, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
 
-        const cw = canvasW/BOARD_W, ch = canvasH/BOARD_H;
         const sf = Math.min(cw, ch);
-
-        // 기지
         const b1x=BASE1_X*cw, b1y=BASE1_Y*ch, b1s=BASE_SIZE*sf;
         const b2x=BASE2_X*cw, b2y=BASE2_Y*ch, b2s=BASE_SIZE*sf;
         ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
@@ -379,7 +378,6 @@
         ctx.fillStyle='#fff';ctx.font='bold 22px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText('P1',b1x,b1y);ctx.fillText('P2',b2x,b2y);
 
-        // 방향 화살표
         const bsx=ball.x*cw, bsy=ball.y*ch;
         if(!placingMode && !ball.moving) {
             const al=25*sf;
@@ -393,7 +391,6 @@
             ctx.closePath();ctx.fill();
         }
 
-        // 공
         ctx.shadowColor='rgba(255,255,255,0.9)';ctx.shadowBlur=12;
         ctx.beginPath();ctx.arc(bsx,bsy,BALL_RADIUS*sf,0,Math.PI*2);
         ctx.fillStyle='#fff';ctx.fill();ctx.shadowBlur=0;
@@ -454,6 +451,13 @@
         else if(ball.x>BOARD_W-BALL_RADIUS-WALL_THICKNESS){ball.x=BOARD_W-BALL_RADIUS-WALL_THICKNESS;ball.vx=-Math.abs(ball.vx)*0.9;}
         if(ball.y<BALL_RADIUS+WALL_THICKNESS){ball.y=BALL_RADIUS+WALL_THICKNESS;ball.vy=Math.abs(ball.vy)*0.9;}
         else if(ball.y>BOARD_H-BALL_RADIUS-WALL_THICKNESS){ball.y=BOARD_H-BALL_RADIUS-WALL_THICKNESS;ball.vy=-Math.abs(ball.vy)*0.9;}
+        // ★ 이동 중 실시간으로 라인 추가
+        if(trailPoints.length > 0) {
+            const last = trailPoints[trailPoints.length-1];
+            if(Math.sqrt((ball.x-last.x)**2 + (ball.y-last.y)**2) > 3) {
+                trailPoints.push({x:ball.x, y:ball.y});
+            }
+        }
         if(shotsFired>1&&checkFailure(px,py,ball.x,ball.y)){
             ball.moving=false;ball.vx=0;ball.vy=0;
             if(animId)cancelAnimationFrame(animId);
@@ -598,7 +602,7 @@
 
     resizeCanvas();
     initGame();
-    console.log('🏆 땅따먹기 v13.0 - 색칠 로직 근본 수정');
+    console.log('🏆 땅따먹기 v14.0 - 이동 라인 + 영역 색칠');
 })();
 </script>
 </body>
