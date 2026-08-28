@@ -19,23 +19,30 @@
 </head>
 <body class="bg-amber-100 min-h-screen flex flex-col items-center justify-between p-2 md:p-3">
     <!-- Header Controls -->
-    <header class="w-full max-w-4xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
+    <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
         <div>
             <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
                 <span>⛳ 추억의 땅따먹기</span>
             </h1>
-            <p class="text-xs text-amber-200">1~2턴 기지 복귀 시 아웃! 반드시 3번째 턴에 기지로 돌아오세요.</p>
+            <p class="text-xs text-amber-200">1~2턴 기지 조기복귀 아웃! 반드시 3번째 턴에 돌아오세요.</p>
         </div>
-        <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
-            새 게임
-        </button>
+        <div class="flex items-center gap-2">
+            <!-- Mode Switcher -->
+            <div class="flex bg-amber-950/60 p-1 rounded-lg text-xs font-semibold items-center gap-1 border border-amber-600/50">
+                <button id="modeNormalBtn" class="px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold">기본 맵</button>
+                <button id="modeLargeBtn" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">대형 맵</button>
+            </div>
+            <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
+                새 게임
+            </button>
+        </div>
     </header>
 
     <!-- Game Status Bar -->
-    <div class="w-full max-w-4xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
+    <div class="w-full max-w-6xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
         <div id="p1Status" class="flex items-center gap-2 font-bold text-red-600 px-3 py-1 rounded-full border-2 border-red-500 bg-red-50">
             <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
-            <span>Player 1 (레드): <span id="p1Score">0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
+            <span>Player 1 (레드): <span id="p1Score">1.0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
         </div>
         
         <div class="text-center px-2">
@@ -45,21 +52,42 @@
 
         <div id="p2Status" class="flex items-center gap-2 font-bold text-blue-600 px-3 py-1 rounded-full border-2 border-transparent opacity-60">
             <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-            <span>Player 2 (블루): <span id="p2Score">0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
+            <span>Player 2 (블루): <span id="p2Score">1.0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
         </div>
     </div>
 
     <!-- Canvas Container -->
-    <main class="w-full max-w-4xl flex-1 h-[65vh] md:h-[70vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
+    <main class="w-full max-w-6xl flex-1 h-[54vh] md:h-[58vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Large Mode Only: Minimap -->
+        <div id="minimapContainer" class="hidden absolute top-3 right-3 bg-black/75 backdrop-blur rounded-lg p-1.5 border border-amber-500/60 shadow-2xl z-10 flex flex-col items-center">
+            <div class="text-[10px] text-amber-200 font-bold mb-1 flex items-center justify-between w-full px-1">
+                <span>🗺️ 미니맵</span>
+                <span class="text-[9px] text-gray-400">터치 시 이동</span>
+            </div>
+            <canvas id="minimapCanvas" width="160" height="100" class="border border-amber-700/60 rounded cursor-pointer bg-[#c5ae82]"></canvas>
+        </div>
         
+        <!-- Large Mode Only: Camera Controls -->
+        <div id="cameraControls" class="hidden absolute bottom-3 right-3 flex-col gap-1.5 z-10">
+            <div class="flex bg-black/60 backdrop-blur rounded-lg p-1 text-white gap-1 shadow-lg">
+                <button id="zoomInBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="확대">+</button>
+                <button id="zoomOutBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="축소">-</button>
+                <button id="recenterBtn" class="px-2.5 h-8 flex items-center justify-center bg-amber-600 hover:bg-amber-500 rounded font-bold text-xs shadow">🎯 내 위치</button>
+            </div>
+            <button id="panToggleBtn" class="bg-black/60 hover:bg-black/80 text-white text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-semibold border border-white/20 shadow-lg">
+                <span>✋ 시점 이동 모드:</span> <span id="panStatus" class="text-red-400">OFF</span>
+            </button>
+        </div>
+
         <!-- Toast Notification Message -->
-        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-10">
+        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-20">
             메시지
         </div>
 
         <!-- Victory Modal Overlay -->
-        <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-20 text-white p-4">
+        <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-30 text-white p-4">
             <div class="bg-amber-900 border-4 border-amber-500 rounded-2xl p-6 text-center max-w-md shadow-2xl">
                 <h2 id="victoryTitle" class="text-2xl md:text-3xl font-extrabold mb-2 text-amber-300">🎉 승리!</h2>
                 <p id="victoryDesc" class="text-sm md:text-base mb-6 text-amber-100">승리 조건이 달성되었습니다!</p>
@@ -70,32 +98,52 @@
         </div>
     </main>
 
-    <!-- Power Gauge & Shoot Controls -->
-    <div class="w-full max-w-4xl bg-amber-900/90 text-white rounded-xl p-3 mt-2 shadow-lg flex flex-col md:flex-row items-center justify-between gap-3 border border-amber-700">
-        <div class="w-full md:w-2/3 flex flex-col gap-1">
-            <div class="flex justify-between text-xs font-bold px-1">
-                <span class="text-amber-200">파워 게이지</span>
-                <span id="powerPercentText" class="text-amber-300">0%</span>
-            </div>
-            <div class="w-full bg-amber-950 h-5 rounded-full overflow-hidden p-0.5 border border-amber-600 relative">
-                <div id="powerBar" class="h-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 rounded-full w-0 transition-all duration-75"></div>
+    <!-- Intuitive Wheel Steering & Pull-to-Flick Controls -->
+    <div class="w-full max-w-6xl bg-amber-900/90 text-white rounded-xl p-3 mt-1.5 shadow-lg flex items-center justify-around gap-4 border border-amber-700">
+        
+        <!-- Single Dial Wheel Control for 360 Degree Aim -->
+        <div class="flex flex-col items-center gap-1">
+            <span class="text-xs text-amber-200 font-bold">🧭 방향 조절 다이얼</span>
+            <div id="steeringWheel" class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-amber-500 bg-amber-950 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing relative touch-none">
+                <!-- Inner Dial Notch -->
+                <div class="w-3 h-3 bg-amber-400 rounded-full absolute top-1 shadow-md"></div>
+                <div class="w-1.5 h-1.5 bg-white/40 rounded-full"></div>
+                <!-- Compass Crosshair lines -->
+                <div class="w-full h-[1px] bg-amber-700/50 absolute"></div>
+                <div class="h-full w-[1px] bg-amber-700/50 absolute"></div>
             </div>
         </div>
-        <div class="flex gap-2 w-full md:w-auto">
-            <button id="shootBtn" disabled class="flex-1 md:flex-none bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-400 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold px-8 py-2.5 rounded-lg text-sm md:text-base shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
-                <span>🚀 발사!</span>
-            </button>
+
+        <!-- Pull-to-Flick Trigger Pad (Visual Arrow Length Control) -->
+        <div class="flex-1 max-w-md flex flex-col items-center gap-1">
+            <span class="text-xs text-amber-200 font-bold">🎯 아래로 당겨서 튕기기</span>
+            <div id="flickPad" class="w-full h-20 md:h-24 bg-amber-950/80 rounded-xl border-2 border-dashed border-amber-500 flex flex-col items-center justify-center cursor-pointer touch-none relative overflow-hidden select-none">
+                <div id="flickHandle" class="bg-gradient-to-b from-red-500 to-amber-600 text-white font-extrabold px-6 py-2 rounded-full shadow-lg border border-amber-300 text-xs md:text-sm transition-transform duration-75 pointer-events-none flex items-center gap-1">
+                    <span>🤏 당겨서 발사!</span>
+                </div>
+                <span class="text-[10px] text-amber-400/70 absolute bottom-1">더 세게 당길수록 길어집니다</span>
+            </div>
         </div>
+
     </div>
 
     <!-- Quick Guide Modal / Help -->
-    <footer class="w-full max-w-4xl text-center text-xs text-amber-900/70 mt-1">
-        💡 <span class="font-semibold">조작법:</span> 1. 방향 설정 (마우스/터치 드래그) ➔ 2. 타이밍에 맞춰 [🚀 발사!] 버튼을 누르세요.
+    <footer class="w-full max-w-6xl text-center text-xs text-amber-900/70 mt-1">
+        💡 <span class="font-semibold">조작법:</span> 다이얼을 돌려 방향 설정 ➔ 오른쪽 패드를 아래로 당겼다가 놓아 튕기세요!
     </footer>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+        const minimapContainer = document.getElementById('minimapContainer');
+        const cameraControls = document.getElementById('cameraControls');
+
+        // Mode switch buttons
+        const modeNormalBtn = document.getElementById('modeNormalBtn');
+        const modeLargeBtn = document.getElementById('modeLargeBtn');
 
         // UI elements
         const p1ScoreEl = document.getElementById('p1Score');
@@ -111,9 +159,13 @@
         const victoryTitle = document.getElementById('victoryTitle');
         const victoryDesc = document.getElementById('victoryDesc');
 
-        const powerBar = document.getElementById('powerBar');
-        const powerPercentText = document.getElementById('powerPercentText');
-        const shootBtn = document.getElementById('shootBtn');
+        // Steering & Flick Control Elements
+        const steeringWheel = document.getElementById('steeringWheel');
+        const flickPad = document.getElementById('flickPad');
+        const flickHandle = document.getElementById('flickHandle');
+
+        const panToggleBtn = document.getElementById('panToggleBtn');
+        const panStatusEl = document.getElementById('panStatus');
 
         // Audio Effects using Web Audio API
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -181,27 +233,42 @@
             osc.stop(now + 0.25);
         }
 
-        // Game Configuration
-        const CAP_RADIUS = 12;
-        const FRICTION = 0.965;
-        const BOUNCE_RESTITUTION = 0.8;
-        const MIN_VELOCITY = 0.15;
+        // Mode States
+        let isLargeMode = false;
+        let MAP_WIDTH = 1200;
+        let MAP_HEIGHT = 800;
+        let CAP_RADIUS = 14;
+        let FRICTION = 0.965;
+        let BOUNCE_RESTITUTION = 0.8;
+        let MIN_VELOCITY = 0.15;
 
-        let width, height;
+        let screenWidth, screenHeight;
         let currentPlayer = 1; // 1: Red, 2: Blue
         let currentShot = 0;   // 0, 1, 2
         let isMoving = false;
-        let isAiming = false;
-        let hasAngleSet = false;
         let gameOver = false;
 
-        let aimAngle = 0; // Angle in radians
-        let aimStartPos = { x: 0, y: 0 };
+        // Steering Wheel and Pull Drag States
+        let aimAngle = (315 * Math.PI) / 180; // Default Radians
+        let wheelRotation = 315;
 
-        // Power Gauge Oscillation Logic
-        let powerValue = 0; // 0 to 100
-        let powerDirection = 1; // 1: increasing, -1: decreasing
-        let powerSpeed = 2.2;
+        let isPullingFlick = false;
+        let flickPullDistance = 0; // Current pull distance for arrow length
+        let maxFlickPull = 80;     // Maximum pull limit
+        let flickStartY = 0;
+
+        // Camera State (Used only in Large Mode)
+        let camera = {
+            x: 0,
+            y: 0,
+            zoom: 1.0,
+            minZoom: 0.25,
+            maxZoom: 2.2
+        };
+
+        let isPanning = false;
+        let panModeActive = false;
+        let panStart = { x: 0, y: 0 };
 
         // Offscreen Canvases for Player Territories
         let p1Canvas, p1Ctx;
@@ -210,6 +277,7 @@
         // Base Initial Area Tracking
         let p1InitialArea = 0;
         let p2InitialArea = 0;
+        let baseRadiusCalculated = 0;
 
         // Cap State
         let cap = {
@@ -222,19 +290,58 @@
         // Path history
         let turnPath = [];
 
+        function setWheelAngle(degrees) {
+            wheelRotation = (degrees + 360) % 360;
+            aimAngle = (wheelRotation * Math.PI) / 180;
+            steeringWheel.style.transform = `rotate(${wheelRotation + 90}deg)`;
+        }
+
+        function setGameMode(large) {
+            isLargeMode = large;
+
+            if (isLargeMode) {
+                MAP_WIDTH = 3200;
+                MAP_HEIGHT = 2000;
+                FRICTION = 0.968;
+                minimapContainer.classList.remove('hidden');
+                cameraControls.classList.remove('hidden');
+                cameraControls.classList.add('flex');
+
+                modeLargeBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+                modeNormalBtn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
+            } else {
+                MAP_WIDTH = Math.max(800, screenWidth || 1000);
+                MAP_HEIGHT = Math.max(500, screenHeight || 650);
+                FRICTION = 0.965;
+                minimapContainer.classList.add('hidden');
+                cameraControls.classList.add('hidden');
+                cameraControls.classList.remove('flex');
+
+                modeNormalBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+                modeLargeBtn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
+            }
+
+            initGame();
+        }
+
         function resizeCanvas() {
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
             
-            const newW = Math.floor(rect.width);
-            const newH = Math.floor(rect.height);
+            screenWidth = Math.floor(rect.width);
+            screenHeight = Math.floor(rect.height);
 
-            if (width === newW && height === newH) return;
+            canvas.width = screenWidth;
+            canvas.height = screenHeight;
 
-            width = newW;
-            height = newH;
-            canvas.width = width;
-            canvas.height = height;
+            if (!isLargeMode) {
+                MAP_WIDTH = screenWidth;
+                MAP_HEIGHT = screenHeight;
+            } else {
+                camera.minZoom = Math.max(screenWidth / MAP_WIDTH, screenHeight / MAP_HEIGHT) * 0.8;
+                if (camera.zoom < camera.minZoom) camera.zoom = camera.minZoom;
+                clampCamera();
+            }
 
             initGame();
         }
@@ -244,28 +351,33 @@
             victoryModal.classList.add('hidden');
 
             p1Canvas = document.createElement('canvas');
-            p1Canvas.width = width;
-            p1Canvas.height = height;
+            p1Canvas.width = MAP_WIDTH;
+            p1Canvas.height = MAP_HEIGHT;
             p1Ctx = p1Canvas.getContext('2d');
 
             p2Canvas = document.createElement('canvas');
-            p2Canvas.width = width;
-            p2Canvas.height = height;
+            p2Canvas.width = MAP_WIDTH;
+            p2Canvas.height = MAP_HEIGHT;
             p2Ctx = p2Canvas.getContext('2d');
 
-            // Draw Base
-            const baseRadius = Math.min(width, height) * 0.22;
+            // Base Area Calculation
+            if (isLargeMode) {
+                const mapArea = MAP_WIDTH * MAP_HEIGHT;
+                baseRadiusCalculated = Math.sqrt((0.04 * mapArea) / Math.PI);
+            } else {
+                baseRadiusCalculated = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.22;
+            }
 
             // P1 Base (Bottom-Left)
             p1Ctx.fillStyle = '#FF0000';
             p1Ctx.beginPath();
-            p1Ctx.arc(0, height, baseRadius, 0, Math.PI * 2);
+            p1Ctx.arc(0, MAP_HEIGHT, baseRadiusCalculated, 0, Math.PI * 2);
             p1Ctx.fill();
 
             // P2 Base (Top-Right)
             p2Ctx.fillStyle = '#0000FF';
             p2Ctx.beginPath();
-            p2Ctx.arc(width, 0, baseRadius, 0, Math.PI * 2);
+            p2Ctx.arc(MAP_WIDTH, 0, baseRadiusCalculated, 0, Math.PI * 2);
             p2Ctx.fill();
 
             p1InitialArea = calculateAreaPixels(p1Ctx);
@@ -273,26 +385,78 @@
 
             currentPlayer = 1;
             resetTurnState();
+
+            if (isLargeMode) {
+                camera.zoom = 0.8;
+                recenterCameraOnCurrentPlayer();
+            }
+
             updateScores();
             updateUI();
+        }
+
+        function recenterCameraOnCurrentPlayer() {
+            if (!isLargeMode) return;
+
+            let focusX, focusY;
+
+            if (currentShot > 0 && cap.x >= 0) {
+                focusX = cap.x;
+                focusY = cap.y;
+            } else {
+                if (currentPlayer === 1) {
+                    focusX = baseRadiusCalculated * 0.5;
+                    focusY = MAP_HEIGHT - (baseRadiusCalculated * 0.5);
+                } else {
+                    focusX = MAP_WIDTH - (baseRadiusCalculated * 0.5);
+                    focusY = baseRadiusCalculated * 0.5;
+                }
+            }
+
+            camera.x = focusX - (screenWidth / (2 * camera.zoom));
+            camera.y = focusY - (screenHeight / (2 * camera.zoom));
+            clampCamera();
+        }
+
+        function clampCamera() {
+            if (!isLargeMode) return;
+
+            const visibleW = screenWidth / camera.zoom;
+            const visibleH = screenHeight / camera.zoom;
+
+            const margin = 100;
+
+            if (visibleW >= MAP_WIDTH) {
+                camera.x = (MAP_WIDTH - visibleW) / 2;
+            } else {
+                camera.x = Math.max(-margin, Math.min(MAP_WIDTH - visibleW + margin, camera.x));
+            }
+
+            if (visibleH >= MAP_HEIGHT) {
+                camera.y = (MAP_HEIGHT - visibleH) / 2;
+            } else {
+                camera.y = Math.max(-margin, Math.min(MAP_HEIGHT - visibleH + margin, camera.y));
+            }
         }
 
         function resetTurnState() {
             currentShot = 0;
             turnPath = [];
             isMoving = false;
-            isAiming = false;
-            hasAngleSet = false;
             cap.vx = 0;
             cap.vy = 0;
             cap.x = -100;
             cap.y = -100;
-            powerValue = 0;
-            powerDirection = 1;
 
-            shootBtn.disabled = true;
-            powerBar.style.width = '0%';
-            powerPercentText.textContent = '0%';
+            flickPullDistance = 0;
+            flickHandle.style.transform = `translateY(0px)`;
+
+            // Set default angle towards opponent
+            if (currentPlayer === 1) {
+                setWheelAngle(315);
+            } else {
+                setWheelAngle(135);
+            }
         }
 
         function showToast(msg) {
@@ -304,7 +468,7 @@
         }
 
         function isPointInTerritory(x, y, player) {
-            if (x < 0 || x >= width || y < 0 || y >= height) return false;
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
             const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
             const pixel = ctxToCheck.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
             return pixel[3] > 128;
@@ -313,11 +477,11 @@
         function calculateAreaPixels(targetCtx) {
             const sampleStep = 8;
             let count = 0;
-            const data = targetCtx.getImageData(0, 0, width, height).data;
+            const data = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
 
-            for (let y = 0; y < height; y += sampleStep) {
-                for (let x = 0; x < width; x += sampleStep) {
-                    const idx = (y * width + x) * 4 + 3;
+            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
+                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
+                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
                     if (data[idx] > 128) count++;
                 }
             }
@@ -330,12 +494,12 @@
             let p2Count = 0;
             let total = 0;
 
-            const p1Data = p1Ctx.getImageData(0, 0, width, height).data;
-            const p2Data = p2Ctx.getImageData(0, 0, width, height).data;
+            const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+            const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
 
-            for (let y = 0; y < height; y += sampleStep) {
-                for (let x = 0; x < width; x += sampleStep) {
-                    const idx = (y * width + x) * 4 + 3;
+            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
+                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
+                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
                     total++;
                     if (p1Data[idx] > 128) p1Count++;
                     if (p2Data[idx] > 128) p2Count++;
@@ -384,6 +548,7 @@
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             resetTurnState();
+            if (isLargeMode) recenterCameraOnCurrentPlayer();
             updateUI();
         }
 
@@ -434,7 +599,16 @@
             updateScores();
         }
 
-        function getCanvasPos(e) {
+        // Coordinate Conversions
+        function screenToMapPos(screenX, screenY) {
+            if (!isLargeMode) return { x: screenX, y: screenY };
+            return {
+                x: camera.x + (screenX / camera.zoom),
+                y: camera.y + (screenY / camera.zoom)
+            };
+        }
+
+        function getScreenPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -444,63 +618,98 @@
             };
         }
 
-        // Aiming Interaction
-        function handleStart(e) {
+        // --- 1. Single Wheel Dial Steering Interaction ---
+        let isWheelTurning = false;
+
+        function handleWheelStart(e) {
+            if (isMoving || gameOver) return;
+            isWheelTurning = true;
+            handleWheelRotate(e);
+        }
+
+        function handleWheelRotate(e) {
+            if (!isWheelTurning) return;
+            const rect = steeringWheel.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const rad = Math.atan2(clientY - centerY, clientX - centerX);
+            let deg = (rad * 180) / Math.PI;
+            setWheelAngle(deg);
+        }
+
+        function handleWheelEnd() {
+            isWheelTurning = false;
+        }
+
+        steeringWheel.addEventListener('mousedown', handleWheelStart);
+        window.addEventListener('mousemove', handleWheelRotate);
+        window.addEventListener('mouseup', handleWheelEnd);
+
+        steeringWheel.addEventListener('touchstart', (e) => { e.preventDefault(); handleWheelStart(e); });
+        window.addEventListener('touchmove', handleWheelRotate);
+        window.addEventListener('touchend', handleWheelEnd);
+
+
+        // --- 2. Pull-to-Flick Launch Pad Interaction ---
+        function handleFlickStart(e) {
             if (isMoving || gameOver) return;
 
-            const pos = getCanvasPos(e);
-
-            if (currentShot === 0) {
-                if (!isPointInTerritory(pos.x, pos.y, currentPlayer)) {
-                    showToast("기지 내부에서 시작해야 합니다!");
-                    return;
-                }
-                cap.x = pos.x;
-                cap.y = pos.y;
-                turnPath = [{ x: pos.x, y: pos.y }];
-            } else {
-                const dist = Math.hypot(pos.x - cap.x, pos.y - cap.y);
-                if (dist > CAP_RADIUS * 4.0) return;
+            // Ensure start position if not set
+            if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
+                const startX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
+                const startY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
+                cap.x = startX;
+                cap.y = startY;
+                turnPath = [{ x: startX, y: startY }];
             }
 
-            isAiming = true;
-            aimStartPos = { x: cap.x, y: cap.y };
-            updateAimAngle(pos);
+            isPullingFlick = true;
+            flickStartY = e.touches ? e.touches[0].clientY : e.clientY;
         }
 
-        function updateAimAngle(pos) {
-            // Angle pointing from drag pos towards start (inverse direction launch)
-            const dx = aimStartPos.x - pos.x;
-            const dy = aimStartPos.y - pos.y;
+        function handleFlickMove(e) {
+            if (!isPullingFlick) return;
 
-            if (Math.hypot(dx, dy) > 3) {
-                aimAngle = Math.atan2(dy, dx);
-                hasAngleSet = true;
-                shootBtn.disabled = false;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+            const dy = currentY - flickStartY;
+
+            // Only allow downward pull
+            flickPullDistance = Math.max(0, Math.min(maxFlickPull, dy));
+            flickHandle.style.transform = `translateY(${flickPullDistance}px)`;
+        }
+
+        function handleFlickEnd() {
+            if (!isPullingFlick) return;
+            isPullingFlick = false;
+
+            if (flickPullDistance > 8) {
+                launchCapByPull(flickPullDistance);
             }
+
+            flickPullDistance = 0;
+            flickHandle.style.transform = `translateY(0px)`;
         }
 
-        function handleMove(e) {
-            if (!isAiming) return;
-            const pos = getCanvasPos(e);
-            updateAimAngle(pos);
-        }
+        flickPad.addEventListener('mousedown', handleFlickStart);
+        window.addEventListener('mousemove', handleFlickMove);
+        window.addEventListener('mouseup', handleFlickEnd);
 
-        function handleEnd() {
-            if (isAiming) {
-                isAiming = false;
-                if (hasAngleSet) {
-                    showToast("파워를 맞춘 뒤 [🚀 발사!]를 누르세요!");
-                }
-            }
-        }
+        flickPad.addEventListener('touchstart', (e) => { e.preventDefault(); handleFlickStart(e); });
+        window.addEventListener('touchmove', handleFlickMove);
+        window.addEventListener('touchend', handleFlickEnd);
 
-        // Shoot Trigger via Button
-        function launchCap() {
-            if (!hasAngleSet || isMoving || gameOver) return;
 
-            const maxSpeed = 22;
-            const actualSpeed = (powerValue / 100) * maxSpeed;
+        // Launch Cap with velocity proportional to pull distance
+        function launchCapByPull(pullDist) {
+            if (isMoving || gameOver) return;
+
+            const pullRatio = pullDist / maxFlickPull; // 0.0 ~ 1.0
+            const maxSpeed = isLargeMode ? 26 : 22;
+            const actualSpeed = Math.max(3, pullRatio * maxSpeed);
 
             cap.vx = Math.cos(aimAngle) * actualSpeed;
             cap.vy = Math.sin(aimAngle) * actualSpeed;
@@ -509,20 +718,141 @@
             currentShot++;
             shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
 
-            shootBtn.disabled = true;
             playFlickSound();
         }
 
-        // Listeners
-        canvas.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', handleEnd);
 
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
-        window.addEventListener('touchmove', handleMove);
-        window.addEventListener('touchend', handleEnd);
+        // Click Canvas Board to select start point in base (Shot 0)
+        function handleBoardClick(e) {
+            if (isMoving || gameOver || currentShot !== 0) return;
 
-        shootBtn.addEventListener('click', launchCap);
+            if (isLargeMode && (e.button === 2 || panModeActive)) {
+                isPanning = true;
+                const scr = getScreenPos(e);
+                panStart = { x: scr.x, y: scr.y };
+                return;
+            }
+
+            if (e.button !== 0 && e.type !== 'touchstart') return;
+
+            const scr = getScreenPos(e);
+            const mapPos = screenToMapPos(scr.x, scr.y);
+
+            if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
+                cap.x = mapPos.x;
+                cap.y = mapPos.y;
+                turnPath = [{ x: mapPos.x, y: mapPos.y }];
+            } else {
+                showToast("기지 내부를 클릭하여 출발 위치를 정하세요!");
+            }
+        }
+
+        function handleBoardPanMove(e) {
+            if (!isLargeMode || !isPanning) return;
+            const scr = getScreenPos(e);
+            const dx = (scr.x - panStart.x) / camera.zoom;
+            const dy = (scr.y - panStart.y) / camera.zoom;
+            camera.x -= dx;
+            camera.y -= dy;
+            panStart = { x: scr.x, y: scr.y };
+            clampCamera();
+        }
+
+        function handleBoardPanEnd() {
+            isPanning = false;
+        }
+
+        canvas.addEventListener('mousedown', handleBoardClick);
+        window.addEventListener('mousemove', handleBoardPanMove);
+        window.addEventListener('mouseup', handleBoardPanEnd);
+
+        // Minimap Touch Click
+        minimapCanvas.addEventListener('click', (e) => {
+            if (!isLargeMode) return;
+            const rect = minimapCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const mapX = (clickX / minimapCanvas.width) * MAP_WIDTH;
+            const mapY = (clickY / minimapCanvas.height) * MAP_HEIGHT;
+
+            camera.x = mapX - (screenWidth / (2 * camera.zoom));
+            camera.y = mapY - (screenHeight / (2 * camera.zoom));
+            clampCamera();
+        });
+
+
+        // Touch Zoom Listeners for Large Mode
+        let initialPinchDist = null;
+        canvas.addEventListener('touchstart', (e) => {
+            if (isLargeMode && e.touches.length === 2) {
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            } else {
+                handleBoardClick(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isLargeMode && e.touches.length === 2 && initialPinchDist) {
+                const newDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const zoomFactor = newDist / initialPinchDist;
+                camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * (zoomFactor > 1 ? 1.03 : 0.97)));
+                clampCamera();
+                initialPinchDist = newDist;
+            } else {
+                handleBoardPanMove(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            initialPinchDist = null;
+            handleBoardPanEnd();
+        });
+
+        // Mouse Wheel Zooming (Large Mode Only)
+        canvas.addEventListener('wheel', (e) => {
+            if (!isLargeMode) return;
+            e.preventDefault();
+            const zoomAmount = e.deltaY < 0 ? 1.1 : 0.9;
+            const scr = getScreenPos(e);
+            const mapBefore = screenToMapPos(scr.x, scr.y);
+
+            camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomAmount));
+
+            camera.x = mapBefore.x - (scr.x / camera.zoom);
+            camera.y = mapBefore.y - (scr.y / camera.zoom);
+            clampCamera();
+        }, { passive: false });
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        modeNormalBtn.addEventListener('click', () => setGameMode(false));
+        modeLargeBtn.addEventListener('click', () => setGameMode(true));
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            camera.zoom = Math.min(camera.maxZoom, camera.zoom * 1.25);
+            clampCamera();
+        });
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            camera.zoom = Math.max(camera.minZoom, camera.zoom / 1.25);
+            clampCamera();
+        });
+        document.getElementById('recenterBtn').addEventListener('click', () => {
+            recenterCameraOnCurrentPlayer();
+            showToast("내 위치로 이동했습니다.");
+        });
+
+        panToggleBtn.addEventListener('click', () => {
+            panModeActive = !panModeActive;
+            panStatusEl.textContent = panModeActive ? "ON" : "OFF";
+            panStatusEl.className = panModeActive ? "text-green-400 font-bold" : "text-red-400";
+        });
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             initGame();
@@ -534,28 +864,18 @@
             showToast("새 게임 시작!");
         });
 
-        // Game Physics & Power Oscillation Loop
+        // Physics Update Loop
         function updatePhysics() {
-            if (gameOver) return;
-
-            // Power Gauge Animation when angle is ready and not moving
-            if (hasAngleSet && !isMoving) {
-                powerValue += powerSpeed * powerDirection;
-                if (powerValue >= 100) {
-                    powerValue = 100;
-                    powerDirection = -1;
-                } else if (powerValue <= 0) {
-                    powerValue = 0;
-                    powerDirection = 1;
-                }
-                powerBar.style.width = powerValue + '%';
-                powerPercentText.textContent = Math.round(powerValue) + '%';
-            }
-
-            if (!isMoving) return;
+            if (gameOver || !isMoving) return;
 
             cap.x += cap.vx;
             cap.y += cap.vy;
+
+            if (isLargeMode) {
+                camera.x = cap.x - (screenWidth / (2 * camera.zoom));
+                camera.y = cap.y - (screenHeight / (2 * camera.zoom));
+                clampCamera();
+            }
 
             let bounced = false;
 
@@ -563,8 +883,8 @@
                 cap.x = CAP_RADIUS;
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
-            } else if (cap.x + CAP_RADIUS > width) {
-                cap.x = width - CAP_RADIUS;
+            } else if (cap.x + CAP_RADIUS > MAP_WIDTH) {
+                cap.x = MAP_WIDTH - CAP_RADIUS;
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
             }
@@ -573,8 +893,8 @@
                 cap.y = CAP_RADIUS;
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
-            } else if (cap.y + CAP_RADIUS > height) {
-                cap.y = height - CAP_RADIUS;
+            } else if (cap.y + CAP_RADIUS > MAP_HEIGHT) {
+                cap.y = MAP_HEIGHT - CAP_RADIUS;
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
             }
@@ -586,18 +906,17 @@
             cap.vx *= FRICTION;
             cap.vy *= FRICTION;
 
-            // Record path position
+            // Path tracking
             const lastPt = turnPath[turnPath.length - 1];
             if (Math.hypot(cap.x - lastPt.x, cap.y - lastPt.y) > 5) {
                 turnPath.push({ x: cap.x, y: cap.y });
             }
 
-            // Stop cap movement
+            // Stop condition
             if (Math.hypot(cap.vx, cap.vy) < MIN_VELOCITY) {
                 cap.vx = 0;
                 cap.vy = 0;
                 isMoving = false;
-                hasAngleSet = false;
 
                 const opponentPlayer = currentPlayer === 1 ? 2 : 1;
                 const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
@@ -613,7 +932,7 @@
                     if (inOwnTerritory) {
                         switchTurn(`실패! ${currentShot}번째 턴에 기지로 돌아왔습니다. (3번째 턴에 돌아와야 함)`);
                     } else {
-                        showToast(`다음 방향을 맞추고 발사하세요 (${currentShot}/3)`);
+                        showToast(`다음 방향을 맞추고 당겨서 발사하세요 (${currentShot}/3)`);
                     }
                 } else if (currentShot === 3) {
                     if (inOwnTerritory) {
@@ -626,22 +945,28 @@
             }
         }
 
-        // Render Canvas Scene
+        // Render Main Canvas Scene
         function render() {
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, screenWidth, screenHeight);
 
-            // Ground Pattern
+            ctx.save();
+            if (isLargeMode) {
+                ctx.scale(camera.zoom, camera.zoom);
+                ctx.translate(-camera.x, -camera.y);
+            }
+
+            // Ground Background Pattern
             ctx.fillStyle = '#d7c097';
-            ctx.fillRect(0, 0, width, height);
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
             ctx.strokeStyle = 'rgba(120, 80, 20, 0.12)';
             ctx.lineWidth = 1;
-            const gridSize = 35;
-            for (let x = 0; x < width; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            const gridSize = 45;
+            for (let x = 0; x < MAP_WIDTH; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_HEIGHT); ctx.stroke();
             }
-            for (let y = 0; y < height; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            for (let y = 0; y < MAP_HEIGHT; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
             }
 
             // Render Territories
@@ -654,9 +979,9 @@
             // Render Map Boundary Border
             ctx.lineWidth = 4;
             ctx.strokeStyle = '#78350F';
-            ctx.strokeRect(0, 0, width, height);
+            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-            // Draw current active path line
+            // Active Path
             if (turnPath.length > 0) {
                 ctx.beginPath();
                 ctx.moveTo(turnPath[0].x, turnPath[0].y);
@@ -670,26 +995,38 @@
                 ctx.setLineDash([]);
             }
 
-            // Draw Direction Aim Line (Compact Arrow)
-            if (hasAngleSet && !isMoving) {
-                const startOffset = CAP_RADIUS + 2; // Start just outside bottle cap
-                const arrowLength = 28;             // Compact length
-                
-                const startX = cap.x + Math.cos(aimAngle) * startOffset;
-                const startY = cap.y + Math.sin(aimAngle) * startOffset;
-                const targetX = startX + Math.cos(aimAngle) * arrowLength;
-                const targetY = startY + Math.sin(aimAngle) * arrowLength;
+            // Active Cap Coordinates
+            let activeCapX = cap.x;
+            let activeCapY = cap.y;
 
-                // Main Aim Shaft
+            if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
+                activeCapX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
+                activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
+            }
+
+            // Direction Aim Arrow (Arrow length scales dynamically with pull distance!)
+            if (!isMoving && activeCapX >= 0 && activeCapY >= 0) {
+                const startOffset = CAP_RADIUS + 3;
+                
+                // Visual arrow length changes based on how much user pulls the flick pad!
+                const baseArrowLen = 25;
+                const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
+                
+                const startX = activeCapX + Math.cos(aimAngle) * startOffset;
+                const startY = activeCapY + Math.sin(aimAngle) * startOffset;
+                const targetX = startX + Math.cos(aimAngle) * dynamicArrowLen;
+                const targetY = startY + Math.sin(aimAngle) * dynamicArrowLen;
+
+                // Shaft Line
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(targetX, targetY);
                 ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 4 + (flickPullDistance / maxFlickPull) * 3;
                 ctx.stroke();
 
                 // Arrow Head
-                const headLen = 10;
+                const headLen = 12 + (flickPullDistance / maxFlickPull) * 4;
                 ctx.beginPath();
                 ctx.moveTo(targetX, targetY);
                 ctx.lineTo(
@@ -705,24 +1042,21 @@
                 ctx.fill();
             }
 
-            // Draw Cap (Bottle Cap)
-            if (cap.x >= 0 && cap.y >= 0) {
+            // Cap Rendering
+            if (activeCapX >= 0 && activeCapY >= 0) {
                 ctx.save();
-                ctx.translate(cap.x, cap.y);
+                ctx.translate(activeCapX, activeCapY);
 
-                // Shadow
                 ctx.beginPath();
                 ctx.arc(2, 3, CAP_RADIUS, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(0,0,0,0.25)';
                 ctx.fill();
 
-                // Cap Body
                 ctx.beginPath();
                 ctx.arc(0, 0, CAP_RADIUS, 0, Math.PI * 2);
                 ctx.fillStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
                 ctx.fill();
 
-                // Inner Ridge Design
                 ctx.beginPath();
                 ctx.arc(0, 0, CAP_RADIUS * 0.7, 0, Math.PI * 2);
                 ctx.strokeStyle = '#FFFFFF';
@@ -732,18 +1066,70 @@
                 ctx.restore();
             }
 
-            // Draw Start Guide Text
-            if (currentShot === 0 && !hasAngleSet && !isMoving && !gameOver) {
+            // Start Guide Text
+            if (currentShot === 0 && !isMoving && !gameOver) {
+                const textX = currentPlayer === 1 ? baseRadiusCalculated * 0.5 : MAP_WIDTH - (baseRadiusCalculated * 0.5);
+                const textY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.5) : baseRadiusCalculated * 0.5;
+
                 ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                const textX = currentPlayer === 1 ? 85 : width - 85;
-                const textY = currentPlayer === 1 ? height - 50 : 60;
-                ctx.fillText("기지에서 드래그하여 조준하세요!", textX, textY);
+                ctx.fillText("다이얼로 방향 조절 후 아래로 당겨 발사하세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
+            }
+
+            ctx.restore();
+
+            if (isLargeMode) {
+                renderMinimap();
             }
         }
 
-        // Loop Function
+        // Minimap Render Logic (Large Mode)
+        function renderMinimap() {
+            const mW = minimapCanvas.width;
+            const mH = minimapCanvas.height;
+
+            minimapCtx.clearRect(0, 0, mW, mH);
+
+            // Ground background
+            minimapCtx.fillStyle = '#d7c097';
+            minimapCtx.fillRect(0, 0, mW, mH);
+
+            // Real-time Player Territories on Minimap
+            minimapCtx.save();
+            minimapCtx.globalAlpha = 0.7;
+            minimapCtx.drawImage(p1Canvas, 0, 0, mW, mH);
+            minimapCtx.drawImage(p2Canvas, 0, 0, mW, mH);
+            minimapCtx.restore();
+
+            // Minimap Outer Border
+            minimapCtx.strokeStyle = '#78350F';
+            minimapCtx.lineWidth = 1.5;
+            minimapCtx.strokeRect(0, 0, mW, mH);
+
+            // Current Cap Position on Minimap
+            if (cap.x >= 0 && cap.y >= 0) {
+                const capMX = (cap.x / MAP_WIDTH) * mW;
+                const capMY = (cap.y / MAP_HEIGHT) * mH;
+
+                minimapCtx.beginPath();
+                minimapCtx.arc(capMX, capMY, 3.5, 0, Math.PI * 2);
+                minimapCtx.fillStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
+                minimapCtx.fill();
+            }
+
+            // Camera View Rectangle Box on Minimap
+            const viewX = (camera.x / MAP_WIDTH) * mW;
+            const viewY = (camera.y / MAP_HEIGHT) * mH;
+            const viewW = ((screenWidth / camera.zoom) / MAP_WIDTH) * mW;
+            const viewH = ((screenHeight / camera.zoom) / MAP_HEIGHT) * mH;
+
+            minimapCtx.strokeStyle = '#FFFFFF';
+            minimapCtx.lineWidth = 1.8;
+            minimapCtx.strokeRect(viewX, viewY, viewW, viewH);
+        }
+
+        // Game Animation Loop
         function gameLoop() {
             updatePhysics();
             render();
