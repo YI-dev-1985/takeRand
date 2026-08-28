@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.82</title>
+    <title>땅따먹기 v1.96 💣안정화버전</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,9 +22,13 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.82</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.96</span>
         </div>
         <div class="flex items-center gap-2">
+            <!-- Bomb Inventory Button -->
+            <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
+                <span>💣 폭탄</span><span id="bombCount" class="bg-white text-red-700 px-1.5 rounded-full text-[10px]">0</span>
+            </button>
             <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
                 <button id="modeNormalBtn" class="px-2 py-0.5 rounded bg-amber-500 text-amber-950 font-bold">기본</button>
                 <button id="modeLargeBtn" class="px-2 py-0.5 rounded hover:bg-amber-700 text-amber-100">대형</button>
@@ -130,7 +134,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        기지 안을 눌러 위치 지정 ➔ [위치확정] 버튼으로 고정 후 발사! (70% 이상 점령 시 승리)
+        숨겨진 폭탄 5개 존재! 최초 획득 시 즉시 지급 (본진 공격 불가, 70% 점령 승리)
     </footer>
 
     <script>
@@ -167,6 +171,9 @@
         const confirmPosBtn = document.getElementById('confirmPosBtn');
         const confirmBtnIcon = document.getElementById('confirmBtnIcon');
         const confirmBtnText = document.getElementById('confirmBtnText');
+
+        const bombBtn = document.getElementById('bombBtn');
+        const bombCountEl = document.getElementById('bombCount');
 
         const panToggleBtn = document.getElementById('panToggleBtn');
         const panStatusEl = document.getElementById('panStatus');
@@ -220,6 +227,22 @@
             osc.stop(now + 0.35);
         }
 
+        function playBombSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.4);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(now + 0.4);
+        }
+
         function playFailSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
@@ -252,6 +275,11 @@
         let gameOver = false;
         let moveTimer = 0;
         let isPositionConfirmed = false;
+
+        // 비공개 폭탄 아이템 시스템 (정확히 5개)
+        let bombItems = []; // [{x, y}]
+        let playerBombs = { 1: 0, 2: 0 };
+        let isBombMode = false;
 
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
@@ -368,6 +396,9 @@
         function initGame() {
             gameOver = false;
             victoryModal.classList.add('hidden');
+            isBombMode = false;
+            playerBombs = { 1: 0, 2: 0 };
+            updateBombUI();
 
             minimapContainer.style.top = '10px';
             minimapContainer.style.right = '10px';
@@ -404,6 +435,8 @@
             p1InitialArea = calculateAreaPixels(p1Ctx);
             p2InitialArea = calculateAreaPixels(p2Ctx);
 
+            generateBombItems();
+
             currentPlayer = 1;
             resetTurnState();
 
@@ -414,6 +447,47 @@
 
             updateScores();
             updateUI();
+        }
+
+        function generateBombItems() {
+            bombItems = [];
+            const targetCount = 5;
+            const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.18;
+            const margin = baseRadiusCalculated * 1.5;
+
+            let attempts = 0;
+            while (bombItems.length < targetCount && attempts < 500) {
+                attempts++;
+                const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
+                const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
+
+                const inP1Base = Math.hypot(bx, MAP_HEIGHT - by) <= baseRadiusCalculated * 1.3;
+                const inP2Base = Math.hypot(MAP_WIDTH - bx, by) <= baseRadiusCalculated * 1.3;
+                if (inP1Base || inP2Base) continue;
+
+                let tooClose = false;
+                for (let b of bombItems) {
+                    if (Math.hypot(b.x - bx, b.y - by) < minDistance) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    bombItems.push({ x: bx, y: by });
+                }
+            }
+        }
+
+        function updateBombUI() {
+            const count = playerBombs[currentPlayer];
+            if (count > 0) {
+                bombBtn.classList.remove('hidden');
+                bombCountEl.textContent = count;
+            } else {
+                bombBtn.classList.add('hidden');
+                isBombMode = false;
+            }
         }
 
         function recenterCameraOnCurrentPlayer() {
@@ -483,6 +557,7 @@
 
             turnPath = [{ x: cap.x, y: cap.y }];
             updateConfirmButtonUI();
+            updateBombUI();
 
             flickPullDistance = 0;
             flickHandle.style.transform = `translateY(0px)`;
@@ -527,7 +602,16 @@
             return pixel[3] > 128;
         }
 
-        // [안정화된 고립 영역 판정 알고리즘]
+        function isEnemyInitialBase(x, y, enemyPlayer) {
+            const px = Math.floor(x);
+            const py = Math.floor(y);
+            if (enemyPlayer === 1) {
+                return Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.1;
+            } else {
+                return Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.1;
+            }
+        }
+
         function cleanupIsolatedTerritory(player) {
             const targetCtx = player === 1 ? p1Ctx : p2Ctx;
             const imgData = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT);
@@ -535,11 +619,9 @@
             const visited = new Uint8Array(MAP_WIDTH * MAP_HEIGHT);
             const queue = [];
 
-            // 본진 중심부에서 출발하여 연결된 영역 찾기
             const baseCenterX = player === 1 ? Math.floor(baseRadiusCalculated * 0.3) : MAP_WIDTH - Math.floor(baseRadiusCalculated * 0.3);
             const baseCenterY = player === 1 ? MAP_HEIGHT - Math.floor(baseRadiusCalculated * 0.3) : Math.floor(baseRadiusCalculated * 0.3);
 
-            // 본진 중심 근처에서 유효한 픽셀을 씨앗(Seed)으로 지정
             let foundSeed = false;
             for (let ry = -10; ry <= 10; ry += 2) {
                 for (let rx = -10; rx <= 10; rx += 2) {
@@ -558,7 +640,6 @@
                 if (foundSeed) break;
             }
 
-            // 씨앗을 찾지 못했다면 정리하지 않음 (본진이 완전히 파괴된 비상 상황 방지)
             if (!foundSeed) return;
 
             let qIdx = 0;
@@ -695,13 +776,38 @@
                 p1StatusEl.classList.add('border-transparent', 'opacity-60');
                 p1StatusEl.classList.remove('border-red-400', 'bg-red-50', 'opacity-100');
             }
+            updateBombUI();
         }
 
+        // [핵심 수정] 안전한 반경 충돌 기반 아이템(폭탄) 획득 판정 로직
         function captureTerritory() {
             if (turnPath.length < 2) return;
 
             const targetCtx = currentPlayer === 1 ? p1Ctx : p2Ctx;
             const enemyCtx = currentPlayer === 1 ? p2Ctx : p1Ctx;
+
+            // 병뚜껑이 지나간 궤적 포인트들과 폭탄 간의 거리를 비교하여 안전하게 판정
+            let acquiredBombsCount = 0;
+            bombItems = bombItems.filter(bomb => {
+                let hit = false;
+                for (let pt of turnPath) {
+                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 25) {
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) {
+                    acquiredBombsCount++;
+                    return false; // 폭탄 소멸
+                }
+                return true;
+            });
+
+            if (acquiredBombsCount > 0) {
+                playerBombs[currentPlayer] += acquiredBombsCount;
+                showToast(`🎁 숨겨진 폭탄 ${acquiredBombsCount}개를 획득했습니다! (총 ${playerBombs[currentPlayer]}개)`);
+                playSuccessSound();
+            }
 
             enemyCtx.globalCompositeOperation = 'destination-out';
             enemyCtx.beginPath();
@@ -765,6 +871,32 @@
             const scr = getScreenPos(e);
             const mapPos = screenToMapPos(scr.x, scr.y);
 
+            if (isBombMode) {
+                const enemyPlayer = currentPlayer === 1 ? 2 : 1;
+                if (isEnemyInitialBase(mapPos.x, mapPos.y, enemyPlayer)) {
+                    showToast("상대방의 최초 기지는 폭탄으로 공격할 수 없습니다!");
+                    playFailSound();
+                    return;
+                }
+
+                const bombRadius = 70;
+                const enemyCtx = enemyPlayer === 1 ? p1Ctx : p2Ctx;
+
+                enemyCtx.globalCompositeOperation = 'destination-out';
+                enemyCtx.beginPath();
+                enemyCtx.arc(mapPos.x, mapPos.y, bombRadius, 0, Math.PI * 2);
+                enemyCtx.fill();
+                enemyCtx.globalCompositeOperation = 'source-over';
+
+                playerBombs[currentPlayer]--;
+                isBombMode = false;
+                playBombSound();
+                showToast("💣 폭탄이 폭발하여 해당 지역이 공용 영역으로 변경되었습니다!");
+                updateScores();
+                updateUI();
+                return;
+            }
+
             const distToCap = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
 
             if (!isPositionConfirmed && currentShot === 0) {
@@ -787,7 +919,21 @@
             }
         }
 
+        bombBtn.addEventListener('click', () => {
+            if (playerBombs[currentPlayer] > 0 && !isMoving && currentShot === 0) {
+                isBombMode = !isBombMode;
+                if (isBombMode) {
+                    showToast("💣 폭탄 모드 ON: 폭파할 상대방 영토를 터치하세요.");
+                    bombBtn.className = "bg-yellow-500 text-black font-extrabold px-2.5 py-1 rounded text-xs shadow animate-bounce border border-white flex items-center gap-1";
+                } else {
+                    showToast("폭탄 모드가 해제되었습니다.");
+                    bombBtn.className = "bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1";
+                }
+            }
+        });
+
         confirmPosBtn.addEventListener('click', () => {
+            if (isBombMode) return;
             isPositionConfirmed = !isPositionConfirmed;
             updateConfirmButtonUI();
             if (isPositionConfirmed) {
@@ -882,7 +1028,7 @@
         window.addEventListener('touchend', handleWheelEnd);
 
         function handleFlickStart(e) {
-            if (isMoving || gameOver) return;
+            if (isMoving || gameOver || isBombMode) return;
             if (!isPositionConfirmed) {
                 showToast("먼저 [위치확정] 버튼을 눌러 위치를 고정하세요!");
                 return;
@@ -1192,7 +1338,6 @@
                 ctx.setLineDash([]);
             }
 
-            // Direct Drag Arrow (Only when position is confirmed)
             if (isDraggingCap && isPositionConfirmed && !isMoving) {
                 const dx = dragStartPos.x - dragCurrentPos.x;
                 const dy = dragStartPos.y - dragCurrentPos.y;
@@ -1235,7 +1380,7 @@
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(targetX, targetY);
-                ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
+                ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#3B82F6';
                 ctx.lineWidth = 4 + (flickPullDistance / maxFlickPull) * 3;
                 ctx.stroke();
 
@@ -1251,7 +1396,7 @@
                     targetY - headLen * Math.sin(aimAngle + Math.PI / 6)
                 );
                 ctx.closePath();
-                ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
+                ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#3B82F6';
                 ctx.fill();
             }
 
