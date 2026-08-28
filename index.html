@@ -129,7 +129,7 @@
 
     <!-- Quick Guide Modal / Help -->
     <footer class="w-full max-w-6xl text-center text-xs text-amber-900/70 mt-1">
-        💡 <span class="font-semibold">조작법:</span> 기지 안을 눌러 위치를 잡고, 병뚜껑을 당기거나 하단 패드로 발사하세요!
+        💡 <span class="font-semibold">조작법:</span> [방법 1] 병뚜껑을 직접 드래그 | [방법 2] 하단 다이얼 조준 후 패드를 당겨 발사!
     </footer>
 
     <script>
@@ -250,7 +250,6 @@
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
 
-        let isSettingPosition = false; // 위치 설정 단계인지 여부
         let isDraggingCap = false;
         let dragStartPos = { x: 0, y: 0 };
         let dragCurrentPos = { x: 0, y: 0 };
@@ -459,7 +458,6 @@
             currentShot = 0;
             turnPath = [];
             isMoving = false;
-            isSettingPosition = false;
             isDraggingCap = false;
             isPullingFlick = false;
             cap.vx = 0;
@@ -489,9 +487,11 @@
         }
 
         function isPointInTerritory(x, y, player) {
-            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
+            const px = Math.floor(x);
+            const py = Math.floor(y);
+            if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) return false;
             const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
-            const pixel = ctxToCheck.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            const pixel = ctxToCheck.getImageData(px, py, 1, 1).data;
             return pixel[3] > 128;
         }
 
@@ -637,7 +637,7 @@
             };
         }
 
-        // --- Safe Board Interaction (Position Selection vs Drag Flick) ---
+        // Direct Cap Drag
         function handleBoardClick(e) {
             if (isMoving || gameOver) return;
 
@@ -663,20 +663,18 @@
             const distToCap = Math.hypot(mapPos.x - activeCapX, mapPos.y - activeCapY);
 
             if (currentShot === 0) {
-                // First shot: Check if clicking inside territory to place cap without immediate launch
                 if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
                     cap.x = mapPos.x;
                     cap.y = mapPos.y;
                     turnPath = [{ x: mapPos.x, y: mapPos.y }];
                     showToast("출발 위치가 지정되었습니다! 병뚜껑을 당기거나 하단 패드를 사용하세요.");
-                    return; // Position placed safely without shooting
+                    return;
                 } else {
                     showToast("기지 내부에서 시작 위치를 선택하세요!");
                     return;
                 }
             }
 
-            // Subsequent shots: Prepare drag-to-flick
             if (distToCap <= CAP_RADIUS * 3.5) {
                 isDraggingCap = true;
                 dragStartPos = { x: cap.x, y: cap.y };
@@ -1185,7 +1183,7 @@
                 ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText("기지 내 원하는 위치를 눌러 튕기세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
+                ctx.fillText("기지 내 원하는 위치를 눌러 지정하세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
             }
 
             ctx.restore();
