@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.75</title>
+    <title>땅따먹기 v1.82</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,7 +22,7 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.75</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.82</span>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -527,6 +527,78 @@
             return pixel[3] > 128;
         }
 
+        // [안정화된 고립 영역 판정 알고리즘]
+        function cleanupIsolatedTerritory(player) {
+            const targetCtx = player === 1 ? p1Ctx : p2Ctx;
+            const imgData = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            const data = imgData.data;
+            const visited = new Uint8Array(MAP_WIDTH * MAP_HEIGHT);
+            const queue = [];
+
+            // 본진 중심부에서 출발하여 연결된 영역 찾기
+            const baseCenterX = player === 1 ? Math.floor(baseRadiusCalculated * 0.3) : MAP_WIDTH - Math.floor(baseRadiusCalculated * 0.3);
+            const baseCenterY = player === 1 ? MAP_HEIGHT - Math.floor(baseRadiusCalculated * 0.3) : Math.floor(baseRadiusCalculated * 0.3);
+
+            // 본진 중심 근처에서 유효한 픽셀을 씨앗(Seed)으로 지정
+            let foundSeed = false;
+            for (let ry = -10; ry <= 10; ry += 2) {
+                for (let rx = -10; rx <= 10; rx += 2) {
+                    const sx = baseCenterX + rx;
+                    const sy = baseCenterY + ry;
+                    if (sx >= 0 && sx < MAP_WIDTH && sy >= 0 && sy < MAP_HEIGHT) {
+                        const idx = sy * MAP_WIDTH + sx;
+                        if (data[idx * 4 + 3] > 128) {
+                            queue.push(sx, sy);
+                            visited[idx] = 1;
+                            foundSeed = true;
+                            break;
+                        }
+                    }
+                }
+                if (foundSeed) break;
+            }
+
+            // 씨앗을 찾지 못했다면 정리하지 않음 (본진이 완전히 파괴된 비상 상황 방지)
+            if (!foundSeed) return;
+
+            let qIdx = 0;
+            const stepX = [0, 0, 1, -1];
+            const stepY = [1, -1, 0, 0];
+
+            while (qIdx < queue.length) {
+                const cx = queue[qIdx++];
+                const cy = queue[qIdx++];
+
+                for (let i = 0; i < 4; i++) {
+                    const nx = cx + stepX[i];
+                    const ny = cy + stepY[i];
+
+                    if (nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT) {
+                        const nIdx = ny * MAP_WIDTH + nx;
+                        if (!visited[nIdx] && data[nIdx * 4 + 3] > 128) {
+                            visited[nIdx] = 1;
+                            queue.push(nx, ny);
+                        }
+                    }
+                }
+            }
+
+            let modified = false;
+            for (let i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
+                if (data[i * 4 + 3] > 128 && !visited[i]) {
+                    data[i * 4] = 0;
+                    data[i * 4 + 1] = 0;
+                    data[i * 4 + 2] = 0;
+                    data[i * 4 + 3] = 0;
+                    modified = true;
+                }
+            }
+
+            if (modified) {
+                targetCtx.putImageData(imgData, 0, 0);
+            }
+        }
+
         function calculateAreaPixels(targetCtx) {
             const sampleStep = 8;
             let count = 0;
@@ -542,6 +614,9 @@
         }
 
         function updateScores() {
+            cleanupIsolatedTerritory(1);
+            cleanupIsolatedTerritory(2);
+
             const sampleStep = 8;
             let p1Count = 0;
             let p2Count = 0;
@@ -573,7 +648,6 @@
             p1BaseRatioEl.textContent = p1Ratio;
             p2BaseRatioEl.textContent = p2Ratio;
 
-            // [변경] 승리 조건 70% 이상 달성 시 승리
             if (p1PercentFloat >= 70.0) {
                 triggerVictory(1, "Red가 70% 이상을 차지했습니다!");
             } else if (p2PercentFloat >= 70.0) {
