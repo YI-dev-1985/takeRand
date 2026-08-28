@@ -635,7 +635,7 @@
             };
         }
 
-        // Direct Cap Drag
+        // Direct Cap Drag (Only sets position on click/touch, does NOT launch immediately)
         function handleBoardClick(e) {
             if (isMoving || gameOver) return;
 
@@ -658,19 +658,14 @@
                 activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
             }
 
-            const distToCap = Math.hypot(mapPos.x - activeCapX, mapPos.y - activeCapY);
-
-            if (currentShot === 0) {
-                if (distToCap <= CAP_RADIUS * 2.5 || isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
-                    cap.x = activeCapX;
-                    cap.y = activeCapY;
-                    turnPath = [{ x: activeCapX, y: activeCapY }];
-                } else {
-                    showToast("기지 내부 또는 병뚜껑을 눌러 드래그하세요!");
-                    return;
-                }
+            // Verify if click is within territory
+            if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
+                cap.x = mapPos.x;
+                cap.y = mapPos.y;
+                turnPath = [{ x: mapPos.x, y: mapPos.y }];
             } else {
-                if (distToCap > CAP_RADIUS * 3.5) return;
+                showToast("기지 내부에서 시작 위치를 선택하세요!");
+                return;
             }
 
             isDraggingCap = true;
@@ -708,7 +703,7 @@
             const dy = dragStartPos.y - dragCurrentPos.y;
             const pullDistance = Math.hypot(dx, dy);
 
-            if (pullDistance < 6) return;
+            if (pullDistance < 6) return; // If clicked without dragging, keep position without launching
 
             const maxPullDistance = 160;
             const maxSpeed = isLargeMode ? 26 : 22;
@@ -759,7 +754,7 @@
         window.addEventListener('touchmove', handleWheelRotate);
         window.addEventListener('touchend', handleWheelEnd);
 
-        // Pull Pad with Dynamic Arrow Length
+        // Pull Pad
         function handleFlickStart(e) {
             if (isMoving || gameOver) return;
             if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
@@ -1180,7 +1175,7 @@
                 ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText("병뚜껑을 당기거나, 하단 다이얼을 이용해 튕기세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
+                ctx.fillText("기지 내 원하는 위치를 눌러 튕기세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
             }
 
             ctx.restore();
