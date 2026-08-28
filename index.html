@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.70</title>
+    <title>땅따먹기 v1.75</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,7 +22,7 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.70</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.75</span>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -130,7 +130,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        기지 안을 눌러 위치 지정 ➔ [위치확정] 버튼으로 고정 후 발사! (3턴째 귀환 필수)
+        기지 안을 눌러 위치 지정 ➔ [위치확정] 버튼으로 고정 후 발사! (70% 이상 점령 시 승리)
     </footer>
 
     <script>
@@ -513,12 +513,10 @@
             const py = Math.floor(y);
             if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) return false;
             
-            // 레드 기지: 좌측 하단 (0, MAP_HEIGHT) 기준
             if (player === 1) {
                 const distFromBottomLeft = Math.hypot(px, MAP_HEIGHT - py);
                 if (distFromBottomLeft <= baseRadiusCalculated) return true;
             }
-            // 블루 기지: 우측 상단 (MAP_WIDTH, 0) 기준
             if (player === 2) {
                 const distFromTopRight = Math.hypot(MAP_WIDTH - px, py);
                 if (distFromTopRight <= baseRadiusCalculated) return true;
@@ -575,10 +573,11 @@
             p1BaseRatioEl.textContent = p1Ratio;
             p2BaseRatioEl.textContent = p2Ratio;
 
-            if (p1PercentFloat >= 90.0) {
-                triggerVictory(1, "Red가 90% 이상을 차지했습니다!");
-            } else if (p2PercentFloat >= 90.0) {
-                triggerVictory(2, "Blue가 90% 이상을 차지했습니다!");
+            // [변경] 승리 조건 70% 이상 달성 시 승리
+            if (p1PercentFloat >= 70.0) {
+                triggerVictory(1, "Red가 70% 이상을 차지했습니다!");
+            } else if (p2PercentFloat >= 70.0) {
+                triggerVictory(2, "Blue가 70% 이상을 차지했습니다!");
             } else if (p2Ratio <= 50) {
                 triggerVictory(1, "Blue 기지가 절반 이하로 줄어들었습니다!");
             } else if (p1Ratio <= 50) {
@@ -630,16 +629,6 @@
             const targetCtx = currentPlayer === 1 ? p1Ctx : p2Ctx;
             const enemyCtx = currentPlayer === 1 ? p2Ctx : p1Ctx;
 
-            targetCtx.fillStyle = currentPlayer === 1 ? '#FF0000' : '#0000FF';
-            targetCtx.beginPath();
-            targetCtx.moveTo(turnPath[0].x, turnPath[0].y);
-
-            for (let i = 1; i < turnPath.length; i++) {
-                targetCtx.lineTo(turnPath[i].x, turnPath[i].y);
-            }
-            targetCtx.closePath();
-            targetCtx.fill();
-
             enemyCtx.globalCompositeOperation = 'destination-out';
             enemyCtx.beginPath();
             enemyCtx.moveTo(turnPath[0].x, turnPath[0].y);
@@ -650,12 +639,20 @@
             enemyCtx.fill();
             enemyCtx.globalCompositeOperation = 'source-over';
 
+            targetCtx.fillStyle = currentPlayer === 1 ? '#FF0000' : '#0000FF';
+            targetCtx.beginPath();
+            targetCtx.moveTo(turnPath[0].x, turnPath[0].y);
+            for (let i = 1; i < turnPath.length; i++) {
+                targetCtx.lineTo(turnPath[i].x, turnPath[i].y);
+            }
+            targetCtx.closePath();
+            targetCtx.fill();
+
             updateScores();
         }
 
         function screenToMapPos(screenX, screenY) {
             const rect = canvas.getBoundingClientRect();
-            // 화면 CSS 크기 대비 캔버스 실제 픽셀 해상도 비율 계산
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             
