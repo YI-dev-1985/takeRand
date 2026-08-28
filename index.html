@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.42</title>
+    <title>땅따먹기 v1.50</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,7 +22,7 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.42</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.50</span>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -56,6 +56,13 @@
     <!-- Canvas Container -->
     <main class="w-full max-w-6xl flex-1 h-[54vh] md:h-[60vh] flex justify-center items-center relative overflow-hidden rounded-xl shadow-md border-2 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Position Confirm Floating Button -->
+        <div id="confirmPosContainer" class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
+            <button id="confirmPosBtn" class="bg-green-600 hover:bg-green-500 text-white font-extrabold px-5 py-2 rounded-full shadow-2xl border-2 border-white text-xs md:text-sm animate-bounce flex items-center gap-1.5">
+                <span>✅ 위치 확정 (발사 준비 완료)</span>
+            </button>
+        </div>
 
         <!-- Minimap -->
         <div id="minimapContainer" class="hidden absolute top-2 right-2 bg-black/80 backdrop-blur rounded p-1 border border-amber-500/65 shadow-xl z-20 flex flex-col items-center select-none">
@@ -123,7 +130,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        병뚜껑을 바로 당겨서 발사하거나 다이얼 조준 후 패드를 당겨 발사! (3턴째 귀환 필수)
+        1단계: 기지 안을 눌러 위치 지정 후 [위치 확정] ➔ 2단계: 병뚜껑 당겨서 발사! (3턴째 귀환 필수)
     </footer>
 
     <script>
@@ -157,6 +164,8 @@
         const steeringWheel = document.getElementById('steeringWheel');
         const flickPad = document.getElementById('flickPad');
         const flickHandle = document.getElementById('flickHandle');
+        const confirmPosContainer = document.getElementById('confirmPosContainer');
+        const confirmPosBtn = document.getElementById('confirmPosBtn');
 
         const panToggleBtn = document.getElementById('panToggleBtn');
         const panStatusEl = document.getElementById('panStatus');
@@ -241,6 +250,7 @@
         let isMoving = false;
         let gameOver = false;
         let moveTimer = 0;
+        let isPositionConfirmed = false; // 위치 확정 대기 상태
 
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
@@ -251,7 +261,7 @@
 
         let isPullingFlick = false;
         let flickPullDistance = 0;
-        let maxFlickPull = 70;
+        let maxFlickPull = 80;
         let flickStartY = 0;
 
         let camera = {
@@ -455,6 +465,7 @@
             isMoving = false;
             isDraggingCap = false;
             isPullingFlick = false;
+            isPositionConfirmed = false; // 새 턴 시작 시 위치 확정 대기
             cap.vx = 0;
             cap.vy = 0;
             moveTimer = 0;
@@ -470,6 +481,7 @@
             }
 
             turnPath = [{ x: cap.x, y: cap.y }];
+            confirmPosContainer.classList.remove('hidden'); // 위치 확정 버튼 표시
 
             flickPullDistance = 0;
             flickHandle.style.transform = `translateY(0px)`;
@@ -651,25 +663,33 @@
 
             const distToCap = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
 
-            if (currentShot === 0) {
+            // 1단계: 턴 시작 후 아직 위치 확정 전일 때는 기지 안을 터치해 위치 지정 가능
+            if (!isPositionConfirmed && currentShot === 0) {
                 if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
                     cap.x = mapPos.x;
                     cap.y = mapPos.y;
                     turnPath = [{ x: mapPos.x, y: mapPos.y }];
-                    showToast("출발 위치가 변경되었습니다.");
+                    showToast("위치가 지정되었습니다. 상단의 [위치 확정]을 누르세요.");
                     return;
                 } else {
-                    showToast("기지 안을 눌러 위치를 선택하세요.");
+                    showToast("먼저 내 진영 기지 안을 눌러 위치를 지정하세요.");
                     return;
                 }
             }
 
-            if (distToCap <= CAP_RADIUS * 3.5) {
+            // 2단계: 위치 확정 후에는 병뚜껑을 당겨서 발사
+            if (isPositionConfirmed && distToCap <= CAP_RADIUS * 3.5) {
                 isDraggingCap = true;
                 dragStartPos = { x: cap.x, y: cap.y };
                 dragCurrentPos = mapPos;
             }
         }
+
+        confirmPosBtn.addEventListener('click', () => {
+            isPositionConfirmed = true;
+            confirmPosContainer.classList.add('hidden');
+            showToast("발사 준비 완료! 병뚜껑을 당기거나 하단 패드를 사용하세요.");
+        });
 
         function handleBoardMove(e) {
             const scr = getScreenPos(e);
@@ -684,7 +704,7 @@
                 return;
             }
 
-            if (!isDraggingCap) return;
+            if (!isDraggingCap || !isPositionConfirmed) return;
             dragCurrentPos = screenToMapPos(scr.x, scr.y);
         }
 
@@ -694,7 +714,7 @@
                 return;
             }
 
-            if (!isDraggingCap) return;
+            if (!isDraggingCap || !isPositionConfirmed) return;
             isDraggingCap = false;
 
             const dx = dragStartPos.x - dragCurrentPos.x;
@@ -704,7 +724,7 @@
             if (pullDistance < 6) return;
 
             const maxPullDistance = 160;
-            const maxSpeed = isLargeMode ? 26 : 22;
+            const maxSpeed = isLargeMode ? 22 : 18;
             const scaleSpeed = Math.min(pullDistance / maxPullDistance, 1.0) * maxSpeed;
 
             const angle = Math.atan2(dy, dx);
@@ -754,6 +774,10 @@
 
         function handleFlickStart(e) {
             if (isMoving || gameOver) return;
+            if (!isPositionConfirmed) {
+                showToast("먼저 기지 안에서 위치를 지정하고 [위치 확정]을 누르세요!");
+                return;
+            }
             isPullingFlick = true;
             flickStartY = e.touches ? e.touches[0].clientY : e.clientY;
         }
@@ -786,7 +810,7 @@
         function launchCapByPull(pullDist) {
             if (isMoving || gameOver) return;
             const pullRatio = pullDist / maxFlickPull;
-            const maxSpeed = isLargeMode ? 26 : 22;
+            const maxSpeed = isLargeMode ? 22 : 18;
             const actualSpeed = Math.max(3, pullRatio * maxSpeed);
 
             cap.vx = Math.cos(aimAngle) * actualSpeed;
@@ -1059,8 +1083,8 @@
                 ctx.setLineDash([]);
             }
 
-            // Direct Drag Arrow
-            if (isDraggingCap && !isMoving) {
+            // Direct Drag Arrow (Only when position is confirmed)
+            if (isDraggingCap && isPositionConfirmed && !isMoving) {
                 const dx = dragStartPos.x - dragCurrentPos.x;
                 const dy = dragStartPos.y - dragCurrentPos.y;
                 const targetX = dragStartPos.x + dx;
@@ -1089,7 +1113,7 @@
                 ctx.closePath();
                 ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
                 ctx.fill();
-            } else if (!isMoving) {
+            } else if (!isMoving && isPositionConfirmed) {
                 const startOffset = CAP_RADIUS + 3;
                 const baseArrowLen = 25;
                 const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
