@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>추억의 병뚜껑 땅따먹기 v1.20-fix</title>
+    <title>땅따먹기 v1.42</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -17,121 +17,113 @@
         }
     </style>
 </head>
-<body class="bg-amber-100 min-h-screen flex flex-col items-center justify-between p-2 md:p-3">
+<body class="bg-amber-100 min-h-screen flex flex-col items-center justify-between p-1.5 md:p-2">
     <!-- Header Controls -->
-    <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
-        <div>
-            <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
-                <span>⛳ 추억의 땅따먹기</span>
-                <span class="bg-amber-600 text-amber-100 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-500">v1.20-fix</span>
-            </h1>
-            <p class="text-xs text-amber-200">1~2턴 기지 조기복귀 아웃! 반드시 3번째 턴에 돌아오세요.</p>
+    <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
+        <div class="flex items-center gap-2">
+            <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.42</span>
         </div>
         <div class="flex items-center gap-2">
-            <!-- Mode Switcher -->
-            <div class="flex bg-amber-950/60 p-1 rounded-lg text-xs font-semibold items-center gap-1 border border-amber-600/50">
-                <button id="modeNormalBtn" class="px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold">기본 맵</button>
-                <button id="modeLargeBtn" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">대형 맵</button>
+            <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
+                <button id="modeNormalBtn" class="px-2 py-0.5 rounded bg-amber-500 text-amber-950 font-bold">기본</button>
+                <button id="modeLargeBtn" class="px-2 py-0.5 rounded hover:bg-amber-700 text-amber-100">대형</button>
             </div>
-            <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
+            <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1 px-2.5 rounded text-xs transition shadow">
                 새 게임
             </button>
         </div>
     </header>
 
-    <!-- Game Status Bar -->
-    <div class="w-full max-w-6xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
-        <div id="p1Status" class="flex items-center gap-2 font-bold text-red-600 px-3 py-1 rounded-full border-2 border-red-500 bg-red-50">
-            <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
-            <span>Player 1 (레드): <span id="p1Score">1.0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
+    <!-- Compact Game Status Bar -->
+    <div class="w-full max-w-6xl bg-white/90 backdrop-blur rounded p-1.5 shadow-sm mb-1 flex justify-around items-center text-[11px] md:text-xs border border-amber-200">
+        <div id="p1Status" class="flex items-center gap-1.5 font-bold text-red-600 px-2 py-0.5 rounded-full border border-red-400 bg-red-50">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+            <span>Red: <span id="p1Score">1.0</span>% (<span id="p1BaseRatio">100</span>%)</span>
         </div>
         
-        <div class="text-center px-2">
-            <span id="turnIndicator" class="font-extrabold text-amber-900 text-sm md:text-base">Player 1 턴</span>
-            <div id="shotsLeft" class="text-xs text-gray-600 font-medium">남은 횟수: 3/3</div>
+        <div class="text-center px-1">
+            <span id="turnIndicator" class="font-extrabold text-amber-900 text-xs md:text-sm">Red 턴</span>
+            <div id="shotsLeft" class="text-[10px] text-gray-600 font-medium">횟수: 3/3</div>
         </div>
 
-        <div id="p2Status" class="flex items-center gap-2 font-bold text-blue-600 px-3 py-1 rounded-full border-2 border-transparent opacity-60">
-            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-            <span>Player 2 (블루): <span id="p2Score">1.0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
+        <div id="p2Status" class="flex items-center gap-1.5 font-bold text-blue-600 px-2 py-0.5 rounded-full border border-transparent opacity-60">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+            <span>Blue: <span id="p2Score">1.0</span>% (<span id="p2BaseRatio">100</span>%)</span>
         </div>
     </div>
 
     <!-- Canvas Container -->
-    <main class="w-full max-w-6xl flex-1 h-[48vh] md:h-[54vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
+    <main class="w-full max-w-6xl flex-1 h-[54vh] md:h-[60vh] flex justify-center items-center relative overflow-hidden rounded-xl shadow-md border-2 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
 
-        <!-- Large Mode Only: Movable Minimap -->
-        <div id="minimapContainer" class="hidden absolute top-3 right-3 bg-black/80 backdrop-blur rounded-lg p-1.5 border border-amber-500/60 shadow-2xl z-20 flex flex-col items-center select-none">
-            <div id="minimapHeader" class="text-[10px] text-amber-200 font-bold mb-1 flex items-center justify-between w-full px-1 cursor-move bg-white/10 rounded py-0.5">
-                <span>✋ 🗺️ 미니맵</span>
-                <span class="text-[9px] text-gray-300">드래그 이동</span>
+        <!-- Minimap -->
+        <div id="minimapContainer" class="hidden absolute top-2 right-2 bg-black/80 backdrop-blur rounded p-1 border border-amber-500/65 shadow-xl z-20 flex flex-col items-center select-none">
+            <div id="minimapHeader" class="text-[9px] text-amber-200 font-bold mb-0.5 flex items-center justify-between w-full px-1 cursor-move bg-white/10 rounded">
+                <span>✋ 미니맵</span>
             </div>
-            <canvas id="minimapCanvas" width="160" height="100" class="border border-amber-700/60 rounded cursor-pointer bg-[#c5ae82]"></canvas>
+            <canvas id="minimapCanvas" width="140" height="90" class="border border-amber-700/60 rounded cursor-pointer bg-[#c5ae82]"></canvas>
         </div>
         
-        <!-- Large Mode Only: Camera Controls -->
-        <div id="cameraControls" class="hidden absolute bottom-3 right-3 flex-col gap-1.5 z-10">
-            <button id="toggleMinimapBtn" class="bg-amber-950/80 hover:bg-amber-900 text-amber-200 text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-bold border border-amber-500/50 shadow-lg">
-                <span>🗺️ 미니맵:</span> <span id="minimapStatus" class="text-green-400">ON</span>
+        <!-- Camera Controls -->
+        <div id="cameraControls" class="hidden absolute bottom-2 right-2 flex-col gap-1 z-10">
+            <button id="toggleMinimapBtn" class="bg-amber-950/80 hover:bg-amber-900 text-amber-200 text-[10px] py-1 px-2 rounded backdrop-blur font-bold border border-amber-500/50 shadow">
+                미니맵: <span id="minimapStatus" class="text-green-400">ON</span>
             </button>
-            <div class="flex bg-black/60 backdrop-blur rounded-lg p-1 text-white gap-1 shadow-lg">
-                <button id="zoomInBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="확대">+</button>
-                <button id="zoomOutBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="축소">-</button>
-                <button id="recenterBtn" class="px-2.5 h-8 flex items-center justify-center bg-amber-600 hover:bg-amber-500 rounded font-bold text-xs shadow">🎯 내 위치</button>
+            <div class="flex bg-black/60 backdrop-blur rounded p-0.5 text-white gap-1 shadow">
+                <button id="zoomInBtn" class="w-7 h-7 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-sm">+</button>
+                <button id="zoomOutBtn" class="w-7 h-7 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-sm">-</button>
+                <button id="recenterBtn" class="px-2 h-7 flex items-center justify-center bg-amber-600 hover:bg-amber-500 rounded font-bold text-[10px]">내 위치</button>
             </div>
-            <button id="panToggleBtn" class="bg-black/60 hover:bg-black/80 text-white text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-semibold border border-white/20 shadow-lg">
-                <span>✋ 시점 이동 모드:</span> <span id="panStatus" class="text-red-400">OFF</span>
+            <button id="panToggleBtn" class="bg-black/60 hover:bg-black/80 text-white text-[10px] py-1 px-2 rounded backdrop-blur flex items-center justify-center gap-1 font-semibold border border-white/20 shadow">
+                시점 이동: <span id="panStatus" class="text-red-400">OFF</span>
             </button>
         </div>
 
         <!-- Toast Notification Message -->
-        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-30">
+        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-xs md:text-sm px-4 py-2 rounded-full pointer-events-none opacity-0 transition-opacity duration-200 shadow-xl text-center z-30">
             메시지
         </div>
 
         <!-- Victory Modal Overlay -->
         <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-40 text-white p-4">
-            <div class="bg-amber-900 border-4 border-amber-500 rounded-2xl p-6 text-center max-w-md shadow-2xl">
-                <h2 id="victoryTitle" class="text-2xl md:text-3xl font-extrabold mb-2 text-amber-300">🎉 승리!</h2>
-                <p id="victoryDesc" class="text-sm md:text-base mb-6 text-amber-100">승리 조건이 달성되었습니다!</p>
-                <button id="modalResetBtn" class="bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold py-2 px-6 rounded-xl text-base shadow-lg transition">
+            <div class="bg-amber-900 border-2 border-amber-500 rounded-xl p-5 text-center max-w-sm shadow-2xl">
+                <h2 id="victoryTitle" class="text-xl md:text-2xl font-extrabold mb-1.5 text-amber-300">승리!</h2>
+                <p id="victoryDesc" class="text-xs md:text-sm mb-4 text-amber-100">조건이 달성되었습니다.</p>
+                <button id="modalResetBtn" class="bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold py-1.5 px-5 rounded-lg text-xs shadow transition">
                     다시 하기
                 </button>
             </div>
         </div>
     </main>
 
-    <!-- Dual Control Dashboard -->
-    <div class="w-full max-w-6xl bg-amber-900/90 text-white rounded-xl p-3 mt-1.5 shadow-lg flex items-center justify-around gap-4 border border-amber-700">
-        
+    <!-- Controls Dashboard -->
+    <div class="w-full max-w-6xl bg-amber-900/90 text-white rounded-lg p-2 mt-1 shadow flex items-center justify-around gap-3 border border-amber-700">
         <!-- Wheel Steering Control -->
-        <div class="flex flex-col items-center gap-1">
-            <span class="text-[11px] text-amber-200 font-bold">🧭 다이얼 방향 설정</span>
-            <div id="steeringWheel" class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-amber-500 bg-amber-950 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing relative touch-none">
-                <div class="w-3 h-3 bg-amber-400 rounded-full absolute top-1 shadow-md"></div>
-                <div class="w-1.5 h-1.5 bg-white/40 rounded-full"></div>
+        <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[10px] text-amber-200 font-bold">다이얼 조준</span>
+            <div id="steeringWheel" class="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-amber-500 bg-amber-950 shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing relative touch-none">
+                <div class="w-2.5 h-2.5 bg-amber-400 rounded-full absolute top-1 shadow-md"></div>
+                <div class="w-1 h-1 bg-white/40 rounded-full"></div>
                 <div class="w-full h-[1px] bg-amber-700/50 absolute"></div>
                 <div class="h-full w-[1px] bg-amber-700/50 absolute"></div>
             </div>
         </div>
 
         <!-- Pull-to-Flick Trigger Pad -->
-        <div class="flex-1 max-w-md flex flex-col items-center gap-1">
-            <span class="text-[11px] text-amber-200 font-bold">🎯 다이얼 조준 후 아래로 당겨 발사</span>
-            <div id="flickPad" class="w-full h-20 md:h-24 bg-amber-950/80 rounded-xl border-2 border-dashed border-amber-500 flex flex-col items-center justify-center cursor-pointer touch-none relative overflow-hidden select-none">
-                <div id="flickHandle" class="bg-gradient-to-b from-red-500 to-amber-600 text-white font-extrabold px-6 py-2 rounded-full shadow-lg border border-amber-300 text-xs md:text-sm transition-transform duration-75 pointer-events-none flex items-center gap-1">
-                    <span>🤏 당겨서 발사!</span>
+        <div class="flex-1 max-w-sm flex flex-col items-center gap-0.5">
+            <span class="text-[10px] text-amber-200 font-bold">아래로 당겨서 발사</span>
+            <div id="flickPad" class="w-full h-16 md:h-20 bg-amber-950/80 rounded-lg border border-dashed border-amber-500 flex flex-col items-center justify-center cursor-pointer touch-none relative overflow-hidden select-none">
+                <div id="flickHandle" class="bg-gradient-to-b from-red-500 to-amber-600 text-white font-extrabold px-5 py-1.5 rounded-full shadow border border-amber-300 text-xs transition-transform duration-75 pointer-events-none">
+                    당겨서 발사
                 </div>
             </div>
         </div>
-
     </div>
 
-    <!-- Quick Guide Modal / Help -->
-    <footer class="w-full max-w-6xl text-center text-xs text-amber-900/70 mt-1 flex justify-between px-2">
-        <span>💡 <span class="font-semibold">조작법:</span> 기지 내 위치 지정 후 당기거나 패드 발사!</span>
-        <span class="text-amber-800 font-bold font-mono">v1.20-fix (안정화 완료)</span>
+    <!-- Minimal Footer -->
+    <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
+        병뚜껑을 바로 당겨서 발사하거나 다이얼 조준 후 패드를 당겨 발사! (3턴째 귀환 필수)
     </footer>
 
     <script>
@@ -239,15 +231,16 @@
         let MAP_WIDTH = 1200;
         let MAP_HEIGHT = 800;
         let CAP_RADIUS = 14;
-        let FRICTION = 0.965;
-        let BOUNCE_RESTITUTION = 0.8;
-        let MIN_VELOCITY = 0.2;
+        let FRICTION = 0.96;
+        let BOUNCE_RESTITUTION = 0.75;
+        let MIN_VELOCITY = 0.25;
 
         let screenWidth = 0, screenHeight = 0;
         let currentPlayer = 1;
         let currentShot = 0;
         let isMoving = false;
         let gameOver = false;
+        let moveTimer = 0;
 
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
@@ -258,7 +251,7 @@
 
         let isPullingFlick = false;
         let flickPullDistance = 0;
-        let maxFlickPull = 80;
+        let maxFlickPull = 70;
         let flickStartY = 0;
 
         let camera = {
@@ -284,8 +277,8 @@
         let baseRadiusCalculated = 0;
 
         let cap = {
-            x: -100,
-            y: -100,
+            x: 0,
+            y: 0,
             vx: 0,
             vy: 0
         };
@@ -309,21 +302,21 @@
                 cameraControls.classList.remove('hidden');
                 cameraControls.classList.add('flex');
 
-                modeLargeBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
-                modeNormalBtn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
+                modeLargeBtn.className = "px-2 py-0.5 rounded bg-amber-500 text-amber-950 font-bold";
+                modeNormalBtn.className = "px-2 py-0.5 rounded hover:bg-amber-700 text-amber-100";
             } else {
                 MAP_WIDTH = screenWidth || 1000;
                 MAP_HEIGHT = screenHeight || 650;
-                FRICTION = 0.965;
+                FRICTION = 0.96;
                 minimapContainer.classList.add('hidden');
                 cameraControls.classList.add('hidden');
                 cameraControls.classList.remove('flex');
 
-                modeNormalBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
-                modeLargeBtn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
+                modeNormalBtn.className = "px-2 py-0.5 rounded bg-amber-500 text-amber-950 font-bold";
+                modeLargeBtn.className = "px-2 py-0.5 rounded hover:bg-amber-700 text-amber-100";
             }
 
-            initGame();
+            resizeCanvas();
         }
 
         function toggleMinimap() {
@@ -365,8 +358,8 @@
             gameOver = false;
             victoryModal.classList.add('hidden');
 
-            minimapContainer.style.top = '12px';
-            minimapContainer.style.right = '12px';
+            minimapContainer.style.top = '10px';
+            minimapContainer.style.right = '10px';
             minimapContainer.style.left = 'auto';
             minimapContainer.style.bottom = 'auto';
 
@@ -464,20 +457,22 @@
             isPullingFlick = false;
             cap.vx = 0;
             cap.vy = 0;
+            moveTimer = 0;
 
-            const defaultX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
-            const defaultY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
-            cap.x = defaultX;
-            cap.y = defaultY;
+            if (currentPlayer === 1) {
+                cap.x = baseRadiusCalculated * 0.4;
+                cap.y = MAP_HEIGHT - (baseRadiusCalculated * 0.4);
+                setWheelAngle(315);
+            } else {
+                cap.x = MAP_WIDTH - (baseRadiusCalculated * 0.4);
+                cap.y = baseRadiusCalculated * 0.4;
+                setWheelAngle(135);
+            }
+
+            turnPath = [{ x: cap.x, y: cap.y }];
 
             flickPullDistance = 0;
             flickHandle.style.transform = `translateY(0px)`;
-
-            if (currentPlayer === 1) {
-                setWheelAngle(315);
-            } else {
-                setWheelAngle(135);
-            }
         }
 
         function showToast(msg) {
@@ -544,20 +539,20 @@
             p2BaseRatioEl.textContent = p2Ratio;
 
             if (p1PercentFloat >= 90.0) {
-                triggerVictory(1, "Player 1이 전체 맵의 90% 이상을 차지했습니다!");
+                triggerVictory(1, "Red가 90% 이상을 차지했습니다!");
             } else if (p2PercentFloat >= 90.0) {
-                triggerVictory(2, "Player 2가 전체 맵의 90% 이상을 차지했습니다!");
+                triggerVictory(2, "Blue가 90% 이상을 차지했습니다!");
             } else if (p2Ratio <= 50) {
-                triggerVictory(1, "Player 2(블루)의 기지가 절반 이하로 줄어들었습니다!");
+                triggerVictory(1, "Blue 기지가 절반 이하로 줄어들었습니다!");
             } else if (p1Ratio <= 50) {
-                triggerVictory(2, "Player 1(레드)의 기지가 절반 이하로 줄어들었습니다!");
+                triggerVictory(2, "Red 기지가 절반 이하로 줄어들었습니다!");
             }
         }
 
         function triggerVictory(winner, desc) {
             gameOver = true;
             playSuccessSound();
-            victoryTitle.textContent = `🎉 Player ${winner} (${winner === 1 ? '레드' : '블루'}) 승리!`;
+            victoryTitle.textContent = `🎉 Player ${winner} (${winner === 1 ? 'Red' : 'Blue'}) 승리!`;
             victoryDesc.textContent = desc;
             victoryModal.classList.remove('hidden');
         }
@@ -575,20 +570,20 @@
         }
 
         function updateUI() {
-            turnIndicatorEl.textContent = `Player ${currentPlayer} (${currentPlayer === 1 ? '레드' : '블루'}) 턴`;
-            turnIndicatorEl.className = `font-extrabold text-sm md:text-base ${currentPlayer === 1 ? 'text-red-600' : 'text-blue-600'}`;
-            shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
+            turnIndicatorEl.textContent = `Player ${currentPlayer} (${currentPlayer === 1 ? 'Red' : 'Blue'}) 턴`;
+            turnIndicatorEl.className = `font-extrabold text-xs md:text-sm ${currentPlayer === 1 ? 'text-red-600' : 'text-blue-600'}`;
+            shotsLeftEl.textContent = `횟수: ${3 - currentShot}/3`;
 
             if (currentPlayer === 1) {
-                p1StatusEl.classList.add('border-red-500', 'bg-red-50', 'opacity-100');
+                p1StatusEl.classList.add('border-red-400', 'bg-red-50', 'opacity-100');
                 p1StatusEl.classList.remove('border-transparent', 'opacity-60');
                 p2StatusEl.classList.add('border-transparent', 'opacity-60');
-                p2StatusEl.classList.remove('border-blue-500', 'bg-blue-50', 'opacity-100');
+                p2StatusEl.classList.remove('border-blue-400', 'bg-blue-50', 'opacity-100');
             } else {
-                p2StatusEl.classList.add('border-blue-500', 'bg-blue-50', 'opacity-100');
+                p2StatusEl.classList.add('border-blue-400', 'bg-blue-50', 'opacity-100');
                 p2StatusEl.classList.remove('border-transparent', 'opacity-60');
                 p1StatusEl.classList.add('border-transparent', 'opacity-60');
-                p1StatusEl.classList.remove('border-red-500', 'bg-red-50', 'opacity-100');
+                p1StatusEl.classList.remove('border-red-400', 'bg-red-50', 'opacity-100');
             }
         }
 
@@ -639,7 +634,6 @@
             };
         }
 
-        // Direct Cap Drag
         function handleBoardClick(e) {
             if (isMoving || gameOver) return;
 
@@ -655,24 +649,17 @@
             const scr = getScreenPos(e);
             const mapPos = screenToMapPos(scr.x, scr.y);
 
-            let activeCapX = cap.x;
-            let activeCapY = cap.y;
-            if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
-                activeCapX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
-                activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
-            }
-
-            const distToCap = Math.hypot(mapPos.x - activeCapX, mapPos.y - activeCapY);
+            const distToCap = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
 
             if (currentShot === 0) {
                 if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
                     cap.x = mapPos.x;
                     cap.y = mapPos.y;
                     turnPath = [{ x: mapPos.x, y: mapPos.y }];
-                    showToast("출발 위치가 지정되었습니다! 병뚜껑을 당기거나 하단 패드를 사용하세요.");
+                    showToast("출발 위치가 변경되었습니다.");
                     return;
                 } else {
-                    showToast("기지 내부에서 시작 위치를 선택하세요!");
+                    showToast("기지 안을 눌러 위치를 선택하세요.");
                     return;
                 }
             }
@@ -725,13 +712,13 @@
             cap.vy = Math.sin(angle) * scaleSpeed;
 
             isMoving = true;
+            moveTimer = 0;
             currentShot++;
-            shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
+            shotsLeftEl.textContent = `횟수: ${3 - currentShot}/3`;
 
             playFlickSound();
         }
 
-        // Wheel Steering
         let isWheelTurning = false;
 
         function handleWheelStart(e) {
@@ -765,16 +752,8 @@
         window.addEventListener('touchmove', handleWheelRotate);
         window.addEventListener('touchend', handleWheelEnd);
 
-        // Pull Pad
         function handleFlickStart(e) {
             if (isMoving || gameOver) return;
-            if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
-                const startX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
-                const startY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
-                cap.x = startX;
-                cap.y = startY;
-                turnPath = [{ x: startX, y: startY }];
-            }
             isPullingFlick = true;
             flickStartY = e.touches ? e.touches[0].clientY : e.clientY;
         }
@@ -814,12 +793,12 @@
             cap.vy = Math.sin(aimAngle) * actualSpeed;
 
             isMoving = true;
+            moveTimer = 0;
             currentShot++;
-            shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
+            shotsLeftEl.textContent = `횟수: ${3 - currentShot}/3`;
             playFlickSound();
         }
 
-        // Global Event Binding
         canvas.addEventListener('mousedown', handleBoardClick);
         window.addEventListener('mousemove', handleBoardMove);
         window.addEventListener('mouseup', handleBoardRelease);
@@ -832,7 +811,6 @@
         window.addEventListener('touchmove', handleBoardMove, { passive: false });
         window.addEventListener('touchend', handleBoardRelease);
 
-        // Minimap Drag
         minimapHeader.addEventListener('mousedown', (e) => {
             e.stopPropagation();
             isDraggingMinimap = true;
@@ -964,6 +942,10 @@
 
             cap.x += cap.vx;
             cap.y += cap.vy;
+            moveTimer++;
+
+            cap.x = Math.max(CAP_RADIUS, Math.min(MAP_WIDTH - CAP_RADIUS, cap.x));
+            cap.y = Math.max(CAP_RADIUS, Math.min(MAP_HEIGHT - CAP_RADIUS, cap.y));
 
             if (isLargeMode) {
                 camera.x = cap.x - (screenWidth / (2 * camera.zoom));
@@ -973,22 +955,12 @@
 
             let bounced = false;
 
-            if (cap.x - CAP_RADIUS < 0) {
-                cap.x = CAP_RADIUS;
-                cap.vx = -cap.vx * BOUNCE_RESTITUTION;
-                bounced = true;
-            } else if (cap.x + CAP_RADIUS > MAP_WIDTH) {
-                cap.x = MAP_WIDTH - CAP_RADIUS;
+            if (cap.x <= CAP_RADIUS || cap.x >= MAP_WIDTH - CAP_RADIUS) {
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
             }
 
-            if (cap.y - CAP_RADIUS < 0) {
-                cap.y = CAP_RADIUS;
-                cap.vy = -cap.vy * BOUNCE_RESTITUTION;
-                bounced = true;
-            } else if (cap.y + CAP_RADIUS > MAP_HEIGHT) {
-                cap.y = MAP_HEIGHT - CAP_RADIUS;
+            if (cap.y <= CAP_RADIUS || cap.y >= MAP_HEIGHT - CAP_RADIUS) {
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
             }
@@ -1005,12 +977,15 @@
                 turnPath.push({ x: cap.x, y: cap.y });
             }
 
-            if (Math.hypot(cap.vx, cap.vy) < MIN_VELOCITY) {
+            const currentSpeed = Math.hypot(cap.vx, cap.vy);
+            if (currentSpeed < MIN_VELOCITY || moveTimer > 400) {
                 cap.vx = 0;
                 cap.vy = 0;
                 isMoving = false;
                 isDraggingCap = false;
                 isPullingFlick = false;
+                flickPullDistance = 0;
+                flickHandle.style.transform = `translateY(0px)`;
 
                 const opponentPlayer = currentPlayer === 1 ? 2 : 1;
                 const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
@@ -1024,7 +999,7 @@
 
                 if (currentShot < 3) {
                     if (inOwnTerritory) {
-                        switchTurn(`실패! ${currentShot}번째 턴에 기지로 돌아왔습니다. (3번째 턴에 돌아와야 함)`);
+                        switchTurn(`실패! ${currentShot}번째 턴에 기지로 복귀했습니다.`);
                     } else {
                         showToast(`다음 위치에서 튕기세요 (${currentShot}/3)`);
                     }
@@ -1084,14 +1059,6 @@
                 ctx.setLineDash([]);
             }
 
-            let activeCapX = cap.x;
-            let activeCapY = cap.y;
-
-            if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
-                activeCapX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
-                activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
-            }
-
             // Direct Drag Arrow
             if (isDraggingCap && !isMoving) {
                 const dx = dragStartPos.x - dragCurrentPos.x;
@@ -1127,8 +1094,8 @@
                 const baseArrowLen = 25;
                 const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
 
-                const startX = activeCapX + Math.cos(aimAngle) * startOffset;
-                const startY = activeCapY + Math.sin(aimAngle) * startOffset;
+                const startX = cap.x + Math.cos(aimAngle) * startOffset;
+                const startY = cap.y + Math.sin(aimAngle) * startOffset;
                 const targetX = startX + Math.cos(aimAngle) * dynamicArrowLen;
                 const targetY = startY + Math.sin(aimAngle) * dynamicArrowLen;
 
@@ -1155,9 +1122,9 @@
                 ctx.fill();
             }
 
-            if (activeCapX >= 0 && activeCapY >= 0) {
+            if (cap.x >= 0 && cap.y >= 0) {
                 ctx.save();
-                ctx.translate(activeCapX, activeCapY);
+                ctx.translate(cap.x, cap.y);
 
                 ctx.beginPath();
                 ctx.arc(2, 3, CAP_RADIUS, 0, Math.PI * 2);
@@ -1176,16 +1143,6 @@
                 ctx.stroke();
 
                 ctx.restore();
-            }
-
-            if (currentShot === 0 && !isDraggingCap && !isMoving && !gameOver) {
-                const textX = currentPlayer === 1 ? baseRadiusCalculated * 0.5 : MAP_WIDTH - (baseRadiusCalculated * 0.5);
-                const textY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.5) : baseRadiusCalculated * 0.5;
-
-                ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("기지 내 원하는 위치를 눌러 지정하세요!", textX, textY + (currentPlayer === 1 ? -40 : 50));
             }
 
             ctx.restore();
