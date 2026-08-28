@@ -19,32 +19,23 @@
 </head>
 <body class="bg-amber-100 min-h-screen flex flex-col items-center justify-between p-2 md:p-3">
     <!-- Header Controls -->
-    <header class="w-full max-w-5xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
+    <header class="w-full max-w-4xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
         <div>
             <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
                 <span>⛳ 추억의 땅따먹기</span>
             </h1>
-            <p class="text-xs text-amber-200">1~2턴 기지 조기복귀 아웃! 반드시 3번째 턴에 기지로 돌아오세요.</p>
+            <p class="text-xs text-amber-200">1~2턴 기지 복귀 시 아웃! 반드시 3번째 턴에 기지로 돌아오세요.</p>
         </div>
-        <div class="flex items-center gap-2">
-            <!-- Map Size Selector -->
-            <div class="flex bg-amber-950/60 p-1 rounded-lg text-xs font-semibold items-center gap-1 border border-amber-600/50">
-                <span class="text-amber-200 px-1 hidden sm:inline">맵 크기:</span>
-                <button id="mapSizeSmall" class="px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold">소형</button>
-                <button id="mapSizeMedium" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">중형</button>
-                <button id="mapSizeLarge" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">대형</button>
-            </div>
-            <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
-                새 게임
-            </button>
-        </div>
+        <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
+            새 게임
+        </button>
     </header>
 
     <!-- Game Status Bar -->
-    <div class="w-full max-w-5xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
+    <div class="w-full max-w-4xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
         <div id="p1Status" class="flex items-center gap-2 font-bold text-red-600 px-3 py-1 rounded-full border-2 border-red-500 bg-red-50">
             <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
-            <span>Player 1: <span id="p1Score">0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
+            <span>Player 1 (레드): <span id="p1Score">0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
         </div>
         
         <div class="text-center px-2">
@@ -54,26 +45,14 @@
 
         <div id="p2Status" class="flex items-center gap-2 font-bold text-blue-600 px-3 py-1 rounded-full border-2 border-transparent opacity-60">
             <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-            <span>Player 2: <span id="p2Score">0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
+            <span>Player 2 (블루): <span id="p2Score">0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
         </div>
     </div>
 
     <!-- Canvas Container -->
-    <main class="w-full max-w-5xl h-[70vh] md:h-[75vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
+    <main class="w-full max-w-4xl flex-1 h-[72vh] md:h-[76vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
         
-        <!-- Viewport Controls Overlay -->
-        <div class="absolute bottom-3 right-3 flex flex-col gap-2 z-10">
-            <div class="flex bg-black/60 backdrop-blur rounded-lg p-1 text-white gap-1 shadow-lg">
-                <button id="zoomInBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg">+</button>
-                <button id="zoomOutBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg">-</button>
-                <button id="recenterBtn" class="px-2.5 h-8 flex items-center justify-center bg-amber-600 hover:bg-amber-500 rounded font-bold text-xs shadow">🎯 내 위치</button>
-            </div>
-            <button id="panToggleBtn" class="bg-black/60 hover:bg-black/80 text-white text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-semibold border border-white/20 shadow-lg">
-                <span>✋ 시점 이동 모드:</span> <span id="panStatus" class="text-red-400">OFF</span>
-            </button>
-        </div>
-
         <!-- Toast Notification Message -->
         <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-10">
             메시지
@@ -92,8 +71,8 @@
     </main>
 
     <!-- Quick Guide Modal / Help -->
-    <footer class="w-full max-w-5xl text-center text-xs text-amber-900/70 mt-1">
-        💡 <span class="font-semibold">조작법:</span> [🎯 내 위치] 버튼으로 기지로 시점 복귀 | 1~2턴 기지 복귀 시 아웃! | 땅 90% 달성 시 승리!
+    <footer class="w-full max-w-4xl text-center text-xs text-amber-900/70 mt-1">
+        💡 <span class="font-semibold">조작법:</span> 병뚜껑을 드래그하여 튕기세요! 3번째 턴에 무사히 돌아오면 땅을 차지합니다.
     </footer>
 
     <script>
@@ -113,12 +92,6 @@
         const victoryModal = document.getElementById('victoryModal');
         const victoryTitle = document.getElementById('victoryTitle');
         const victoryDesc = document.getElementById('victoryDesc');
-        const panStatusEl = document.getElementById('panStatus');
-        const panToggleBtn = document.getElementById('panToggleBtn');
-
-        const mapSizeSmallBtn = document.getElementById('mapSizeSmall');
-        const mapSizeMediumBtn = document.getElementById('mapSizeMedium');
-        const mapSizeLargeBtn = document.getElementById('mapSizeLarge');
 
         // Audio Effects using Web Audio API
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -186,41 +159,18 @@
             osc.stop(now + 0.25);
         }
 
-        // Map Size Preset Configurations
-        const MAP_PRESETS = {
-            small: { width: 1000, height: 700, baseRadius: 160, capRadius: 14 },
-            medium: { width: 1600, height: 1100, baseRadius: 210, capRadius: 16 },
-            large: { width: 2400, height: 1600, baseRadius: 260, capRadius: 18 }
-        };
-
-        let currentPresetKey = 'small';
-        let MAP_WIDTH = MAP_PRESETS.small.width;
-        let MAP_HEIGHT = MAP_PRESETS.small.height;
-        let CAP_RADIUS = MAP_PRESETS.small.capRadius;
-
+        // Game Configuration
+        const CAP_RADIUS = 12;
         const FRICTION = 0.965;
         const BOUNCE_RESTITUTION = 0.8;
         const MIN_VELOCITY = 0.15;
 
-        let screenWidth, screenHeight;
+        let width, height;
         let currentPlayer = 1; // 1: Red, 2: Blue
         let currentShot = 0;   // 0, 1, 2
         let isMoving = false;
         let isDragging = false;
         let gameOver = false;
-
-        // Viewport Camera State
-        let camera = {
-            x: 0,
-            y: 0,
-            zoom: 1.0,
-            minZoom: 0.3,
-            maxZoom: 2.5
-        };
-
-        let isPanning = false;
-        let panModeActive = false;
-        let panStart = { x: 0, y: 0 };
 
         let dragStart = { x: 0, y: 0 };
         let dragCurrent = { x: 0, y: 0 };
@@ -233,7 +183,7 @@
         let p1InitialArea = 0;
         let p2InitialArea = 0;
 
-        // Player Cap State
+        // Cap State
         let cap = {
             x: 0,
             y: 0,
@@ -241,40 +191,22 @@
             vy: 0
         };
 
-        // Path history during current turn
+        // Path history
         let turnPath = [];
 
         function resizeCanvas() {
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
             
-            screenWidth = Math.floor(rect.width);
-            screenHeight = Math.floor(rect.height);
+            const newW = Math.floor(rect.width);
+            const newH = Math.floor(rect.height);
 
-            canvas.width = screenWidth;
-            canvas.height = screenHeight;
+            if (width === newW && height === newH) return;
 
-            camera.minZoom = Math.max(screenWidth / MAP_WIDTH, screenHeight / MAP_HEIGHT);
-            if (camera.zoom < camera.minZoom) camera.zoom = camera.minZoom;
-
-            clampCamera();
-            render();
-        }
-
-        function setMapPreset(key) {
-            currentPresetKey = key;
-            const preset = MAP_PRESETS[key];
-            MAP_WIDTH = preset.width;
-            MAP_HEIGHT = preset.height;
-            CAP_RADIUS = preset.capRadius;
-
-            // Update UI Button Styles
-            [mapSizeSmallBtn, mapSizeMediumBtn, mapSizeLargeBtn].forEach(btn => {
-                btn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
-            });
-            if (key === 'small') mapSizeSmallBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
-            if (key === 'medium') mapSizeMediumBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
-            if (key === 'large') mapSizeLargeBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+            width = newW;
+            height = newH;
+            canvas.width = width;
+            canvas.height = height;
 
             initGame();
         }
@@ -283,91 +215,38 @@
             gameOver = false;
             victoryModal.classList.add('hidden');
 
-            const preset = MAP_PRESETS[currentPresetKey];
-
             p1Canvas = document.createElement('canvas');
-            p1Canvas.width = MAP_WIDTH;
-            p1Canvas.height = MAP_HEIGHT;
+            p1Canvas.width = width;
+            p1Canvas.height = height;
             p1Ctx = p1Canvas.getContext('2d');
 
             p2Canvas = document.createElement('canvas');
-            p2Canvas.width = MAP_WIDTH;
-            p2Canvas.height = MAP_HEIGHT;
+            p2Canvas.width = width;
+            p2Canvas.height = height;
             p2Ctx = p2Canvas.getContext('2d');
 
-            // Draw Initial Base (Bottom-Left: P1, Top-Right: P2)
-            const baseRadius = preset.baseRadius;
+            // Draw Base
+            const baseRadius = Math.min(width, height) * 0.22;
 
-            // Player 1 Base (Bottom-Left)
+            // P1 Base (Bottom-Left)
             p1Ctx.fillStyle = '#FF0000';
             p1Ctx.beginPath();
-            p1Ctx.arc(0, MAP_HEIGHT, baseRadius, 0, Math.PI * 2);
+            p1Ctx.arc(0, height, baseRadius, 0, Math.PI * 2);
             p1Ctx.fill();
 
-            // Player 2 Base (Top-Right)
+            // P2 Base (Top-Right)
             p2Ctx.fillStyle = '#0000FF';
             p2Ctx.beginPath();
-            p2Ctx.arc(MAP_WIDTH, 0, baseRadius, 0, Math.PI * 2);
+            p2Ctx.arc(width, 0, baseRadius, 0, Math.PI * 2);
             p2Ctx.fill();
 
-            // Record initial base areas
             p1InitialArea = calculateAreaPixels(p1Ctx);
             p2InitialArea = calculateAreaPixels(p2Ctx);
 
             currentPlayer = 1;
             resetTurnState();
-            
-            // Default camera zoom fit according to map size
-            if (currentPresetKey === 'small') camera.zoom = 0.9;
-            else if (currentPresetKey === 'medium') camera.zoom = 0.65;
-            else camera.zoom = 0.45;
-
-            camera.minZoom = Math.max(screenWidth / MAP_WIDTH, screenHeight / MAP_HEIGHT);
-            if (camera.zoom < camera.minZoom) camera.zoom = camera.minZoom;
-
-            recenterCameraOnCurrentPlayer();
             updateScores();
             updateUI();
-        }
-
-        function recenterCameraOnCurrentPlayer() {
-            let focusX, focusY;
-            const preset = MAP_PRESETS[currentPresetKey];
-
-            if (currentShot > 0 && cap.x >= 0) {
-                focusX = cap.x;
-                focusY = cap.y;
-            } else {
-                // Point focus offset towards the interior of the map from corner bases
-                if (currentPlayer === 1) {
-                    focusX = preset.baseRadius * 0.75;
-                    focusY = MAP_HEIGHT - (preset.baseRadius * 0.75);
-                } else {
-                    focusX = MAP_WIDTH - (preset.baseRadius * 0.75);
-                    focusY = preset.baseRadius * 0.75;
-                }
-            }
-
-            camera.x = focusX - (screenWidth / (2 * camera.zoom));
-            camera.y = focusY - (screenHeight / (2 * camera.zoom));
-            clampCamera();
-        }
-
-        function clampCamera() {
-            const visibleW = screenWidth / camera.zoom;
-            const visibleH = screenHeight / camera.zoom;
-
-            if (visibleW >= MAP_WIDTH) {
-                camera.x = (MAP_WIDTH - visibleW) / 2;
-            } else {
-                camera.x = Math.max(0, Math.min(MAP_WIDTH - visibleW, camera.x));
-            }
-
-            if (visibleH >= MAP_HEIGHT) {
-                camera.y = (MAP_HEIGHT - visibleH) / 2;
-            } else {
-                camera.y = Math.max(0, Math.min(MAP_HEIGHT - visibleH, camera.y));
-            }
         }
 
         function resetTurnState() {
@@ -390,20 +269,20 @@
         }
 
         function isPointInTerritory(x, y, player) {
-            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
+            if (x < 0 || x >= width || y < 0 || y >= height) return false;
             const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
             const pixel = ctxToCheck.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
             return pixel[3] > 128;
         }
 
         function calculateAreaPixels(targetCtx) {
-            const sampleStep = 12;
+            const sampleStep = 8;
             let count = 0;
-            const data = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+            const data = targetCtx.getImageData(0, 0, width, height).data;
 
-            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
-                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
-                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
+            for (let y = 0; y < height; y += sampleStep) {
+                for (let x = 0; x < width; x += sampleStep) {
+                    const idx = (y * width + x) * 4 + 3;
                     if (data[idx] > 128) count++;
                 }
             }
@@ -411,17 +290,17 @@
         }
 
         function updateScores() {
-            const sampleStep = 12;
+            const sampleStep = 8;
             let p1Count = 0;
             let p2Count = 0;
             let total = 0;
 
-            const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
-            const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+            const p1Data = p1Ctx.getImageData(0, 0, width, height).data;
+            const p2Data = p2Ctx.getImageData(0, 0, width, height).data;
 
-            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
-                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
-                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
+            for (let y = 0; y < height; y += sampleStep) {
+                for (let x = 0; x < width; x += sampleStep) {
+                    const idx = (y * width + x) * 4 + 3;
                     total++;
                     if (p1Data[idx] > 128) p1Count++;
                     if (p2Data[idx] > 128) p2Count++;
@@ -470,7 +349,6 @@
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             resetTurnState();
-            recenterCameraOnCurrentPlayer();
             updateUI();
         }
 
@@ -521,15 +399,7 @@
             updateScores();
         }
 
-        // Coordinate Conversion Helpers
-        function screenToMapPos(screenX, screenY) {
-            return {
-                x: camera.x + (screenX / camera.zoom),
-                y: camera.y + (screenY / camera.zoom)
-            };
-        }
-
-        function getScreenPos(e) {
+        function getCanvasPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -543,59 +413,32 @@
         function handleStart(e) {
             if (isMoving || gameOver) return;
 
-            if (e.button === 2 || panModeActive) {
-                isPanning = true;
-                const scr = getScreenPos(e);
-                panStart = { x: scr.x, y: scr.y };
-                return;
-            }
-
-            if (e.button !== 0 && e.type !== 'touchstart') return;
-
-            const scr = getScreenPos(e);
-            const mapPos = screenToMapPos(scr.x, scr.y);
+            const pos = getCanvasPos(e);
 
             if (currentShot === 0) {
-                if (!isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
+                if (!isPointInTerritory(pos.x, pos.y, currentPlayer)) {
                     showToast("기지 내부에서 시작해야 합니다!");
                     return;
                 }
-                cap.x = mapPos.x;
-                cap.y = mapPos.y;
-                turnPath = [{ x: mapPos.x, y: mapPos.y }];
+                cap.x = pos.x;
+                cap.y = pos.y;
+                turnPath = [{ x: pos.x, y: pos.y }];
             } else {
-                const dist = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
-                if (dist > CAP_RADIUS * 3.5) return;
+                const dist = Math.hypot(pos.x - cap.x, pos.y - cap.y);
+                if (dist > CAP_RADIUS * 3.0) return;
             }
 
             isDragging = true;
             dragStart = { x: cap.x, y: cap.y };
-            dragCurrent = mapPos;
+            dragCurrent = pos;
         }
 
         function handleMove(e) {
-            const scr = getScreenPos(e);
-
-            if (isPanning) {
-                const dx = (scr.x - panStart.x) / camera.zoom;
-                const dy = (scr.y - panStart.y) / camera.zoom;
-                camera.x -= dx;
-                camera.y -= dy;
-                panStart = { x: scr.x, y: scr.y };
-                clampCamera();
-                return;
-            }
-
             if (!isDragging) return;
-            dragCurrent = screenToMapPos(scr.x, scr.y);
+            dragCurrent = getCanvasPos(e);
         }
 
         function handleEnd() {
-            if (isPanning) {
-                isPanning = false;
-                return;
-            }
-
             if (!isDragging) return;
             isDragging = false;
 
@@ -605,7 +448,7 @@
 
             if (power < 5) return;
 
-            const maxPower = 28;
+            const maxPower = 22;
             const scale = Math.min(power * 0.18, maxPower) / power;
 
             cap.vx = dx * scale;
@@ -618,80 +461,14 @@
             playFlickSound();
         }
 
-        // Pinch Zoom Support
-        let initialPinchDist = null;
-        canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                initialPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-            } else {
-                handleStart(e);
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && initialPinchDist) {
-                const newDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                const zoomFactor = newDist / initialPinchDist;
-                camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * (zoomFactor > 1 ? 1.03 : 0.97)));
-                clampCamera();
-                initialPinchDist = newDist;
-            } else {
-                handleMove(e);
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (e) => {
-            initialPinchDist = null;
-            handleEnd();
-        });
-
-        // Mouse Wheel Zooming
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomAmount = e.deltaY < 0 ? 1.1 : 0.9;
-            const scr = getScreenPos(e);
-            const mapBefore = screenToMapPos(scr.x, scr.y);
-
-            camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomAmount));
-
-            camera.x = mapBefore.x - (scr.x / camera.zoom);
-            camera.y = mapBefore.y - (scr.y / camera.zoom);
-            clampCamera();
-        }, { passive: false });
-
-        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        // Listeners
+        canvas.addEventListener('mousedown', handleStart);
         window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleEnd);
 
-        // Control Buttons Listeners
-        document.getElementById('zoomInBtn').addEventListener('click', () => {
-            camera.zoom = Math.min(camera.maxZoom, camera.zoom * 1.25);
-            clampCamera();
-        });
-        document.getElementById('zoomOutBtn').addEventListener('click', () => {
-            camera.zoom = Math.max(camera.minZoom, camera.zoom / 1.25);
-            clampCamera();
-        });
-        document.getElementById('recenterBtn').addEventListener('click', () => {
-            recenterCameraOnCurrentPlayer();
-            showToast("내 위치로 이동했습니다.");
-        });
-
-        panToggleBtn.addEventListener('click', () => {
-            panModeActive = !panModeActive;
-            panStatusEl.textContent = panModeActive ? "ON" : "OFF";
-            panStatusEl.className = panModeActive ? "text-green-400 font-bold" : "text-red-400";
-        });
-
-        mapSizeSmallBtn.addEventListener('click', () => setMapPreset('small'));
-        mapSizeMediumBtn.addEventListener('click', () => setMapPreset('medium'));
-        mapSizeLargeBtn.addEventListener('click', () => setMapPreset('large'));
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); });
+        window.addEventListener('touchmove', handleMove);
+        window.addEventListener('touchend', handleEnd);
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             initGame();
@@ -716,8 +493,8 @@
                 cap.x = CAP_RADIUS;
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
-            } else if (cap.x + CAP_RADIUS > MAP_WIDTH) {
-                cap.x = MAP_WIDTH - CAP_RADIUS;
+            } else if (cap.x + CAP_RADIUS > width) {
+                cap.x = width - CAP_RADIUS;
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
             }
@@ -726,8 +503,8 @@
                 cap.y = CAP_RADIUS;
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
-            } else if (cap.y + CAP_RADIUS > MAP_HEIGHT) {
-                cap.y = MAP_HEIGHT - CAP_RADIUS;
+            } else if (cap.y + CAP_RADIUS > height) {
+                cap.y = height - CAP_RADIUS;
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
             }
@@ -739,14 +516,9 @@
             cap.vx *= FRICTION;
             cap.vy *= FRICTION;
 
-            // Auto-follow cap with camera
-            camera.x = cap.x - (screenWidth / (2 * camera.zoom));
-            camera.y = cap.y - (screenHeight / (2 * camera.zoom));
-            clampCamera();
-
             // Record path position
             const lastPt = turnPath[turnPath.length - 1];
-            if (Math.hypot(cap.x - lastPt.x, cap.y - lastPt.y) > 6) {
+            if (Math.hypot(cap.x - lastPt.x, cap.y - lastPt.y) > 5) {
                 turnPath.push({ x: cap.x, y: cap.y });
             }
 
@@ -783,39 +555,35 @@
             }
         }
 
-        // Render Canvas Scene with World Camera Transform
+        // Render Canvas Scene
         function render() {
-            ctx.clearRect(0, 0, screenWidth, screenHeight);
+            ctx.clearRect(0, 0, width, height);
 
-            ctx.save();
-            ctx.scale(camera.zoom, camera.zoom);
-            ctx.translate(-camera.x, -camera.y);
-
-            // Draw Ground Canvas Pattern
+            // Ground Pattern
             ctx.fillStyle = '#d7c097';
-            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            ctx.fillRect(0, 0, width, height);
 
-            ctx.strokeStyle = 'rgba(120, 80, 20, 0.1)';
+            ctx.strokeStyle = 'rgba(120, 80, 20, 0.12)';
             ctx.lineWidth = 1;
-            const gridSize = 50;
-            for (let x = 0; x < MAP_WIDTH; x += gridSize) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_HEIGHT); ctx.stroke();
+            const gridSize = 35;
+            for (let x = 0; x < width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
             }
-            for (let y = 0; y < MAP_HEIGHT; y += gridSize) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
+            for (let y = 0; y < height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
             }
 
-            // Render Territories with Translucency
+            // Render Territories
             ctx.save();
-            ctx.globalAlpha = 0.45;
+            ctx.globalAlpha = 0.5;
             ctx.drawImage(p1Canvas, 0, 0);
             ctx.drawImage(p2Canvas, 0, 0);
             ctx.restore();
 
-            // Render Map Boundary Outer Border
-            ctx.lineWidth = 6;
+            // Render Map Boundary Border
+            ctx.lineWidth = 4;
             ctx.strokeStyle = '#78350F';
-            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+            ctx.strokeRect(0, 0, width, height);
 
             // Draw current active path line
             if (turnPath.length > 0) {
@@ -825,32 +593,42 @@
                     ctx.lineTo(turnPath[i].x, turnPath[i].y);
                 }
                 ctx.strokeStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
-                ctx.lineWidth = 5;
-                ctx.setLineDash([8, 5]);
+                ctx.lineWidth = 4;
+                ctx.setLineDash([6, 4]);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
 
-            // Draw Drag Arrow Indicator
+            // Draw Drag Arrow Indicator (Original Vector Arrow)
             if (isDragging) {
                 const dx = dragStart.x - dragCurrent.x;
                 const dy = dragStart.y - dragCurrent.y;
+                const targetX = dragStart.x + dx;
+                const targetY = dragStart.y + dy;
 
+                // Main Arrow Line
                 ctx.beginPath();
                 ctx.moveTo(dragStart.x, dragStart.y);
-                ctx.lineTo(dragStart.x + dx, dragStart.y + dy);
+                ctx.lineTo(targetX, targetY);
                 ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
                 ctx.lineWidth = 5;
                 ctx.lineCap = 'round';
                 ctx.stroke();
 
-                // Arrow Head
+                // Arrow Head (Correct vector calculations)
                 const angle = Math.atan2(dy, dx);
-                const headLen = 14;
+                const headLen = 12;
                 ctx.beginPath();
-                ctx.moveTo(dragStart.x + dx, dragStart.y + dy);
-                ctx.lineTo(dragStart.x + dx - headLen * Math.cos(angle - Math.PI / 6), dragStart.y + dy - headLen * Math.sin(angle - Math.PI / 6));
-                ctx.lineTo(dragStart.x + dx - headLen * Math.cos(angle + Math.PI / 6), dragStart.y + dy - headLen * Math.sin(angle + Math.PI / 6));
+                ctx.moveTo(targetX, targetY);
+                ctx.lineTo(
+                    targetX - headLen * Math.cos(angle - Math.PI / 6),
+                    targetY - headLen * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.lineTo(
+                    targetX - headLen * Math.cos(angle + Math.PI / 6),
+                    targetY - headLen * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.closePath();
                 ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
                 ctx.fill();
             }
@@ -862,7 +640,7 @@
 
                 // Shadow
                 ctx.beginPath();
-                ctx.arc(3, 4, CAP_RADIUS, 0, Math.PI * 2);
+                ctx.arc(2, 3, CAP_RADIUS, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(0,0,0,0.25)';
                 ctx.fill();
 
@@ -876,33 +654,21 @@
                 ctx.beginPath();
                 ctx.arc(0, 0, CAP_RADIUS * 0.7, 0, Math.PI * 2);
                 ctx.strokeStyle = '#FFFFFF';
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = 2;
                 ctx.stroke();
 
                 ctx.restore();
             }
 
-            // Draw Start Hint Indicator & Glowing Guide for Turn 0
+            // Draw Start Guide Text
             if (currentShot === 0 && !isDragging && !isMoving && !gameOver) {
-                const preset = MAP_PRESETS[currentPresetKey];
-                const baseX = currentPlayer === 1 ? preset.baseRadius * 0.4 : MAP_WIDTH - (preset.baseRadius * 0.4);
-                const baseY = currentPlayer === 1 ? MAP_HEIGHT - (preset.baseRadius * 0.4) : preset.baseRadius * 0.4;
-
-                // Pulsing Start Ring
-                const pulse = (Math.sin(Date.now() * 0.005) + 1) * 8;
-                ctx.beginPath();
-                ctx.arc(baseX, baseY, 30 + pulse, 0, Math.PI * 2);
-                ctx.strokeStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-
-                ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
-                ctx.font = 'bold 20px sans-serif';
+                ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
+                ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText("기지를 눌러 드래그하세요!", baseX, baseY + (currentPlayer === 1 ? -45 : 55));
+                const textX = currentPlayer === 1 ? 80 : width - 80;
+                const textY = currentPlayer === 1 ? height - 50 : 60;
+                ctx.fillText("기지를 눌러 드래그하세요!", textX, textY);
             }
-
-            ctx.restore();
         }
 
         // Loop Function
@@ -916,7 +682,6 @@
         window.onload = function() {
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
-            initGame();
             gameLoop();
         };
     </script>
