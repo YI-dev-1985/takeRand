@@ -60,17 +60,20 @@
     <main class="w-full max-w-6xl flex-1 h-[54vh] md:h-[58vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
 
-        <!-- Large Mode Only: Minimap -->
-        <div id="minimapContainer" class="hidden absolute top-3 right-3 bg-black/75 backdrop-blur rounded-lg p-1.5 border border-amber-500/60 shadow-2xl z-10 flex flex-col items-center">
-            <div class="text-[10px] text-amber-200 font-bold mb-1 flex items-center justify-between w-full px-1">
-                <span>🗺️ 미니맵</span>
-                <span class="text-[9px] text-gray-400">터치 시 이동</span>
+        <!-- Large Mode Only: Movable Minimap -->
+        <div id="minimapContainer" class="hidden absolute top-3 right-3 bg-black/80 backdrop-blur rounded-lg p-1.5 border border-amber-500/60 shadow-2xl z-20 flex flex-col items-center select-none">
+            <div id="minimapHeader" class="text-[10px] text-amber-200 font-bold mb-1 flex items-center justify-between w-full px-1 cursor-move bg-white/10 rounded py-0.5">
+                <span>✋ 🗺️ 미니맵</span>
+                <span class="text-[9px] text-gray-300">드래그 이동</span>
             </div>
             <canvas id="minimapCanvas" width="160" height="100" class="border border-amber-700/60 rounded cursor-pointer bg-[#c5ae82]"></canvas>
         </div>
         
         <!-- Large Mode Only: Camera Controls -->
         <div id="cameraControls" class="hidden absolute bottom-3 right-3 flex-col gap-1.5 z-10">
+            <button id="toggleMinimapBtn" class="bg-amber-950/80 hover:bg-amber-900 text-amber-200 text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-bold border border-amber-500/50 shadow-lg">
+                <span>🗺️ 미니맵:</span> <span id="minimapStatus" class="text-green-400">ON</span>
+            </button>
             <div class="flex bg-black/60 backdrop-blur rounded-lg p-1 text-white gap-1 shadow-lg">
                 <button id="zoomInBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="확대">+</button>
                 <button id="zoomOutBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg" title="축소">-</button>
@@ -82,12 +85,12 @@
         </div>
 
         <!-- Toast Notification Message -->
-        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-20">
+        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-30">
             메시지
         </div>
 
         <!-- Victory Modal Overlay -->
-        <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-30 text-white p-4">
+        <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-40 text-white p-4">
             <div class="bg-amber-900 border-4 border-amber-500 rounded-2xl p-6 text-center max-w-md shadow-2xl">
                 <h2 id="victoryTitle" class="text-2xl md:text-3xl font-extrabold mb-2 text-amber-300">🎉 승리!</h2>
                 <p id="victoryDesc" class="text-sm md:text-base mb-6 text-amber-100">승리 조건이 달성되었습니다!</p>
@@ -114,7 +117,7 @@
             </div>
         </div>
 
-        <!-- Pull-to-Flick Trigger Pad (Visual Arrow Length Control) -->
+        <!-- Pull-to-Flick Trigger Pad -->
         <div class="flex-1 max-w-md flex flex-col items-center gap-1">
             <span class="text-xs text-amber-200 font-bold">🎯 아래로 당겨서 튕기기</span>
             <div id="flickPad" class="w-full h-20 md:h-24 bg-amber-950/80 rounded-xl border-2 border-dashed border-amber-500 flex flex-col items-center justify-center cursor-pointer touch-none relative overflow-hidden select-none">
@@ -139,7 +142,10 @@
         const minimapCanvas = document.getElementById('minimapCanvas');
         const minimapCtx = minimapCanvas.getContext('2d');
         const minimapContainer = document.getElementById('minimapContainer');
+        const minimapHeader = document.getElementById('minimapHeader');
         const cameraControls = document.getElementById('cameraControls');
+        const toggleMinimapBtn = document.getElementById('toggleMinimapBtn');
+        const minimapStatusEl = document.getElementById('minimapStatus');
 
         // Mode switch buttons
         const modeNormalBtn = document.getElementById('modeNormalBtn');
@@ -235,6 +241,7 @@
 
         // Mode States
         let isLargeMode = false;
+        let isMinimapVisible = true;
         let MAP_WIDTH = 1200;
         let MAP_HEIGHT = 800;
         let CAP_RADIUS = 14;
@@ -242,22 +249,22 @@
         let BOUNCE_RESTITUTION = 0.8;
         let MIN_VELOCITY = 0.15;
 
-        let screenWidth, screenHeight;
+        let screenWidth = 0, screenHeight = 0;
         let currentPlayer = 1; // 1: Red, 2: Blue
         let currentShot = 0;   // 0, 1, 2
         let isMoving = false;
         let gameOver = false;
 
         // Steering Wheel and Pull Drag States
-        let aimAngle = (315 * Math.PI) / 180; // Default Radians
+        let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
 
         let isPullingFlick = false;
-        let flickPullDistance = 0; // Current pull distance for arrow length
-        let maxFlickPull = 80;     // Maximum pull limit
+        let flickPullDistance = 0;
+        let maxFlickPull = 80;
         let flickStartY = 0;
 
-        // Camera State (Used only in Large Mode)
+        // Camera State
         let camera = {
             x: 0,
             y: 0,
@@ -270,6 +277,10 @@
         let panModeActive = false;
         let panStart = { x: 0, y: 0 };
 
+        // Minimap Drag Position State
+        let isDraggingMinimap = false;
+        let minimapDragStart = { x: 0, y: 0 };
+
         // Offscreen Canvases for Player Territories
         let p1Canvas, p1Ctx;
         let p2Canvas, p2Ctx;
@@ -281,8 +292,8 @@
 
         // Cap State
         let cap = {
-            x: 0,
-            y: 0,
+            x: -100,
+            y: -100,
             vx: 0,
             vy: 0
         };
@@ -303,15 +314,15 @@
                 MAP_WIDTH = 3200;
                 MAP_HEIGHT = 2000;
                 FRICTION = 0.968;
-                minimapContainer.classList.remove('hidden');
+                if (isMinimapVisible) minimapContainer.classList.remove('hidden');
                 cameraControls.classList.remove('hidden');
                 cameraControls.classList.add('flex');
 
                 modeLargeBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
                 modeNormalBtn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
             } else {
-                MAP_WIDTH = Math.max(800, screenWidth || 1000);
-                MAP_HEIGHT = Math.max(500, screenHeight || 650);
+                MAP_WIDTH = screenWidth || 1000;
+                MAP_HEIGHT = screenHeight || 650;
                 FRICTION = 0.965;
                 minimapContainer.classList.add('hidden');
                 cameraControls.classList.add('hidden');
@@ -322,6 +333,19 @@
             }
 
             initGame();
+        }
+
+        function toggleMinimap() {
+            isMinimapVisible = !isMinimapVisible;
+            if (isMinimapVisible && isLargeMode) {
+                minimapContainer.classList.remove('hidden');
+                minimapStatusEl.textContent = 'ON';
+                minimapStatusEl.className = 'text-green-400';
+            } else {
+                minimapContainer.classList.add('hidden');
+                minimapStatusEl.textContent = 'OFF';
+                minimapStatusEl.className = 'text-red-400';
+            }
         }
 
         function resizeCanvas() {
@@ -349,6 +373,12 @@
         function initGame() {
             gameOver = false;
             victoryModal.classList.add('hidden');
+
+            // Reset minimap position to top-right corner
+            minimapContainer.style.top = '12px';
+            minimapContainer.style.right = '12px';
+            minimapContainer.style.left = 'auto';
+            minimapContainer.style.bottom = 'auto';
 
             p1Canvas = document.createElement('canvas');
             p1Canvas.width = MAP_WIDTH;
@@ -445,13 +475,16 @@
             isMoving = false;
             cap.vx = 0;
             cap.vy = 0;
-            cap.x = -100;
-            cap.y = -100;
+
+            // Explicitly set cap start position according to active base
+            const defaultX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
+            const defaultY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
+            cap.x = defaultX;
+            cap.y = defaultY;
 
             flickPullDistance = 0;
             flickHandle.style.transform = `translateY(0px)`;
 
-            // Set default angle towards opponent
             if (currentPlayer === 1) {
                 setWheelAngle(315);
             } else {
@@ -658,7 +691,6 @@
         function handleFlickStart(e) {
             if (isMoving || gameOver) return;
 
-            // Ensure start position if not set
             if (currentShot === 0 && (cap.x < 0 || cap.y < 0)) {
                 const startX = currentPlayer === 1 ? baseRadiusCalculated * 0.4 : MAP_WIDTH - (baseRadiusCalculated * 0.4);
                 const startY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
@@ -677,7 +709,6 @@
             const currentY = e.touches ? e.touches[0].clientY : e.clientY;
             const dy = currentY - flickStartY;
 
-            // Only allow downward pull
             flickPullDistance = Math.max(0, Math.min(maxFlickPull, dy));
             flickHandle.style.transform = `translateY(${flickPullDistance}px)`;
         }
@@ -702,12 +733,10 @@
         window.addEventListener('touchmove', handleFlickMove);
         window.addEventListener('touchend', handleFlickEnd);
 
-
-        // Launch Cap with velocity proportional to pull distance
         function launchCapByPull(pullDist) {
             if (isMoving || gameOver) return;
 
-            const pullRatio = pullDist / maxFlickPull; // 0.0 ~ 1.0
+            const pullRatio = pullDist / maxFlickPull;
             const maxSpeed = isLargeMode ? 26 : 22;
             const actualSpeed = Math.max(3, pullRatio * maxSpeed);
 
@@ -720,6 +749,65 @@
 
             playFlickSound();
         }
+
+        // --- 3. Drag Minimap Position Logic ---
+        minimapHeader.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            isDraggingMinimap = true;
+            const rect = minimapContainer.getBoundingClientRect();
+            minimapDragStart = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDraggingMinimap) return;
+            const mainRect = canvas.parentElement.getBoundingClientRect();
+            
+            let newLeft = e.clientX - mainRect.left - minimapDragStart.x;
+            let newTop = e.clientY - mainRect.top - minimapDragStart.y;
+
+            newLeft = Math.max(0, Math.min(mainRect.width - minimapContainer.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(mainRect.height - minimapContainer.offsetHeight, newTop));
+
+            minimapContainer.style.left = newLeft + 'px';
+            minimapContainer.style.top = newTop + 'px';
+            minimapContainer.style.right = 'auto';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingMinimap = false;
+        });
+
+        minimapHeader.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            isDraggingMinimap = true;
+            const rect = minimapContainer.getBoundingClientRect();
+            minimapDragStart = {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDraggingMinimap || !e.touches[0]) return;
+            const mainRect = canvas.parentElement.getBoundingClientRect();
+            
+            let newLeft = e.touches[0].clientX - mainRect.left - minimapDragStart.x;
+            let newTop = e.touches[0].clientY - mainRect.top - minimapDragStart.y;
+
+            newLeft = Math.max(0, Math.min(mainRect.width - minimapContainer.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(mainRect.height - minimapContainer.offsetHeight, newTop));
+
+            minimapContainer.style.left = newLeft + 'px';
+            minimapContainer.style.top = newTop + 'px';
+            minimapContainer.style.right = 'auto';
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            isDraggingMinimap = false;
+        });
 
 
         // Click Canvas Board to select start point in base (Shot 0)
@@ -766,7 +854,7 @@
         window.addEventListener('mousemove', handleBoardPanMove);
         window.addEventListener('mouseup', handleBoardPanEnd);
 
-        // Minimap Touch Click
+        // Minimap Touch Click Navigation
         minimapCanvas.addEventListener('click', (e) => {
             if (!isLargeMode) return;
             const rect = minimapCanvas.getBoundingClientRect();
@@ -831,6 +919,8 @@
         }, { passive: false });
 
         canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        toggleMinimapBtn.addEventListener('click', toggleMinimap);
 
         modeNormalBtn.addEventListener('click', () => setGameMode(false));
         modeLargeBtn.addEventListener('click', () => setGameMode(true));
@@ -1004,11 +1094,10 @@
                 activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
             }
 
-            // Direction Aim Arrow (Arrow length scales dynamically with pull distance!)
+            // Direction Aim Arrow
             if (!isMoving && activeCapX >= 0 && activeCapY >= 0) {
                 const startOffset = CAP_RADIUS + 3;
                 
-                // Visual arrow length changes based on how much user pulls the flick pad!
                 const baseArrowLen = 25;
                 const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
                 
@@ -1079,7 +1168,7 @@
 
             ctx.restore();
 
-            if (isLargeMode) {
+            if (isLargeMode && isMinimapVisible) {
                 renderMinimap();
             }
         }
