@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.96 💣안정화버전</title>
+    <title>땅따먹기 v2.20 💣지그재그폭탄</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,9 +22,13 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.96</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v2.20</span>
         </div>
         <div class="flex items-center gap-2">
+            <!-- Bomb Visibility Toggle Button -->
+            <button id="toggleBombViewBtn" class="bg-amber-900 hover:bg-amber-700 text-amber-200 text-[10px] px-2 py-1 rounded shadow border border-amber-600 font-bold transition">
+                👁️ 폭탄 숨김
+            </button>
             <!-- Bomb Inventory Button -->
             <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
                 <span>💣 폭탄</span><span id="bombCount" class="bg-white text-red-700 px-1.5 rounded-full text-[10px]">0</span>
@@ -134,7 +138,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        숨겨진 폭탄 5개 존재! 최초 획득 시 즉시 지급 (본진 공격 불가, 70% 점령 승리)
+        폭탄 5개 숨김! 획득 시 지그재그 모양으로 상대 영토 파괴 (본진 공격 불가, 70% 승리)
     </footer>
 
     <script>
@@ -174,6 +178,7 @@
 
         const bombBtn = document.getElementById('bombBtn');
         const bombCountEl = document.getElementById('bombCount');
+        const toggleBombViewBtn = document.getElementById('toggleBombViewBtn');
 
         const panToggleBtn = document.getElementById('panToggleBtn');
         const panStatusEl = document.getElementById('panStatus');
@@ -233,14 +238,14 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(120, now);
-            osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
-            gain.gain.setValueAtTime(0.7, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.4);
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(20, now + 0.6);
+            gain.gain.setValueAtTime(0.9, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.6);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(now + 0.4);
+            osc.stop(now + 0.6);
         }
 
         function playFailSound() {
@@ -276,10 +281,13 @@
         let moveTimer = 0;
         let isPositionConfirmed = false;
 
-        // 비공개 폭탄 아이템 시스템 (정확히 5개)
-        let bombItems = []; // [{x, y}]
+        let bombItems = [];
         let playerBombs = { 1: 0, 2: 0 };
         let isBombMode = false;
+        let showBombLocations = false;
+        let roundTurnCounter = 0;
+
+        let explosionEffect = null; // {type: 'zigzag', points: [...], alpha: 1.0, maxRadius: ...}
 
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
@@ -398,6 +406,8 @@
             victoryModal.classList.add('hidden');
             isBombMode = false;
             playerBombs = { 1: 0, 2: 0 };
+            explosionEffect = null;
+            roundTurnCounter = 0;
             updateBombUI();
 
             minimapContainer.style.top = '10px';
@@ -435,7 +445,7 @@
             p1InitialArea = calculateAreaPixels(p1Ctx);
             p2InitialArea = calculateAreaPixels(p2Ctx);
 
-            generateBombItems();
+            generateInitialBombs();
 
             currentPlayer = 1;
             resetTurnState();
@@ -449,14 +459,14 @@
             updateUI();
         }
 
-        function generateBombItems() {
+        function generateInitialBombs() {
             bombItems = [];
             const targetCount = 5;
-            const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.18;
+            const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.25;
             const margin = baseRadiusCalculated * 1.5;
 
             let attempts = 0;
-            while (bombItems.length < targetCount && attempts < 500) {
+            while (bombItems.length < targetCount && attempts < 1000) {
                 attempts++;
                 const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
                 const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
@@ -475,6 +485,39 @@
 
                 if (!tooClose) {
                     bombItems.push({ x: bx, y: by });
+                }
+            }
+        }
+
+        function spawnOneRandomBomb() {
+            const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.25;
+            const margin = baseRadiusCalculated * 1.2;
+            let attempts = 0;
+            while (attempts < 200) {
+                attempts++;
+                const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
+                const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
+
+                const px = Math.floor(bx);
+                const py = Math.floor(by);
+                if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) continue;
+
+                const p1Pixel = p1Ctx.getImageData(px, py, 1, 1).data[3];
+                const p2Pixel = p2Ctx.getImageData(px, py, 1, 1).data[3];
+                const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated;
+                const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated;
+
+                let tooClose = false;
+                for (let b of bombItems) {
+                    if (Math.hypot(b.x - bx, b.y - by) < minDistance) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (p1Pixel <= 128 && p2Pixel <= 128 && !inP1Base && !inP2Base && !tooClose) {
+                    bombItems.push({ x: bx, y: by });
+                    break;
                 }
             }
         }
@@ -754,6 +797,12 @@
             if (message) showToast(message);
             if (isSuccess) playSuccessSound(); else playFailSound();
 
+            roundTurnCounter++;
+            if (roundTurnCounter >= 2) {
+                roundTurnCounter = 0;
+                spawnOneRandomBomb();
+            }
+
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             resetTurnState();
             if (isLargeMode) recenterCameraOnCurrentPlayer();
@@ -779,33 +828,31 @@
             updateBombUI();
         }
 
-        // [핵심 수정] 안전한 반경 충돌 기반 아이템(폭탄) 획득 판정 로직
         function captureTerritory() {
             if (turnPath.length < 2) return;
 
             const targetCtx = currentPlayer === 1 ? p1Ctx : p2Ctx;
             const enemyCtx = currentPlayer === 1 ? p2Ctx : p1Ctx;
 
-            // 병뚜껑이 지나간 궤적 포인트들과 폭탄 간의 거리를 비교하여 안전하게 판정
             let acquiredBombsCount = 0;
             bombItems = bombItems.filter(bomb => {
                 let hit = false;
                 for (let pt of turnPath) {
-                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 25) {
+                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 22) {
                         hit = true;
                         break;
                     }
                 }
                 if (hit) {
                     acquiredBombsCount++;
-                    return false; // 폭탄 소멸
+                    return false;
                 }
                 return true;
             });
 
             if (acquiredBombsCount > 0) {
                 playerBombs[currentPlayer] += acquiredBombsCount;
-                showToast(`🎁 숨겨진 폭탄 ${acquiredBombsCount}개를 획득했습니다! (총 ${playerBombs[currentPlayer]}개)`);
+                showToast(`🎁 숨겨진 폭탄 ${acquiredBombsCount}개 획득! (총 보유: ${playerBombs[currentPlayer]}개)`);
                 playSuccessSound();
             }
 
@@ -871,6 +918,7 @@
             const scr = getScreenPos(e);
             const mapPos = screenToMapPos(scr.x, scr.y);
 
+            // [폭탄 사용 모드] -> 지그재그 모양으로 타일 파괴
             if (isBombMode) {
                 const enemyPlayer = currentPlayer === 1 ? 2 : 1;
                 if (isEnemyInitialBase(mapPos.x, mapPos.y, enemyPlayer)) {
@@ -879,19 +927,50 @@
                     return;
                 }
 
-                const bombRadius = 70;
+                const mapArea = MAP_WIDTH * MAP_HEIGHT;
+                const targetArea = mapArea * 0.01; // 전체 맵의 1% 면적
+                const radius = Math.sqrt(targetArea / Math.PI);
+
                 const enemyCtx = enemyPlayer === 1 ? p1Ctx : p2Ctx;
 
+                // 지그재그 타일 형태의 파괴 좌표 점들 생성
+                const zigzagPoints = [];
+                const step = 12;
+                for (let ty = -radius; ty <= radius; ty += step) {
+                    for (let tx = -radius; tx <= radius; tx += step) {
+                        const dist = Math.hypot(tx, ty);
+                        if (dist <= radius) {
+                            // 지그재그 패턴 오프셋 적용
+                            const jitterX = (Math.random() - 0.5) * 8;
+                            const jitterY = (Math.random() - 0.5) * 8;
+                            zigzagPoints.push({ x: mapPos.x + tx + jitterX, y: mapPos.y + ty + jitterY });
+                        }
+                    }
+                }
+
+                // 캔버스에서 지그재그 블록들 파내기
                 enemyCtx.globalCompositeOperation = 'destination-out';
-                enemyCtx.beginPath();
-                enemyCtx.arc(mapPos.x, mapPos.y, bombRadius, 0, Math.PI * 2);
-                enemyCtx.fill();
+                zigzagPoints.forEach(pt => {
+                    enemyCtx.beginPath();
+                    enemyCtx.arc(pt.x, pt.y, 10, 0, Math.PI * 2);
+                    enemyCtx.fill();
+                });
                 enemyCtx.globalCompositeOperation = 'source-over';
+
+                // 폭발 이펙트 등록 (지그재그형)
+                explosionEffect = {
+                    x: mapPos.x,
+                    y: mapPos.y,
+                    radius: 10,
+                    maxRadius: radius,
+                    alpha: 1.0,
+                    points: zigzagPoints
+                };
 
                 playerBombs[currentPlayer]--;
                 isBombMode = false;
                 playBombSound();
-                showToast("💣 폭탄이 폭발하여 해당 지역이 공용 영역으로 변경되었습니다!");
+                showToast("💣 지그재그 폭탄이 터져 상대 영역이 파괴되었습니다!");
                 updateScores();
                 updateUI();
                 return;
@@ -929,6 +1008,19 @@
                     showToast("폭탄 모드가 해제되었습니다.");
                     bombBtn.className = "bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1";
                 }
+            }
+        });
+
+        toggleBombViewBtn.addEventListener('click', () => {
+            showBombLocations = !showBombLocations;
+            if (showBombLocations) {
+                toggleBombViewBtn.className = "bg-green-700 hover:bg-green-600 text-white text-[10px] px-2 py-1 rounded shadow border border-green-500 font-bold transition";
+                toggleBombViewBtn.textContent = "👁️ 폭탄 보기 (ON)";
+                showToast("폭탄 위치가 표시됩니다.");
+            } else {
+                toggleBombViewBtn.className = "bg-amber-900 hover:bg-amber-700 text-amber-200 text-[10px] px-2 py-1 rounded shadow border border-amber-600 font-bold transition";
+                toggleBombViewBtn.textContent = "👁️ 폭탄 숨김";
+                showToast("폭탄 위치가 숨겨졌습니다.");
             }
         });
 
@@ -1315,11 +1407,57 @@
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
             }
 
+            // [폭탄 보기 켜져 있을 때] 형광 주황색 단일 점으로 폭탄 위치 표시
+            if (showBombLocations) {
+                bombItems.forEach(bomb => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(bomb.x, bomb.y, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FF5722';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.stroke();
+
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText('💣', bomb.x, bomb.y - 8);
+                    ctx.restore();
+                });
+            }
+
             ctx.save();
             ctx.globalAlpha = 0.5;
             ctx.drawImage(p1Canvas, 0, 0);
             ctx.drawImage(p2Canvas, 0, 0);
             ctx.restore();
+
+            // [폭발 이펙트 렌더링 - 지그재그 패턴]
+            if (explosionEffect) {
+                ctx.save();
+                if (explosionEffect.points) {
+                    ctx.fillStyle = `rgba(239, 68, 68, ${explosionEffect.alpha})`;
+                    explosionEffect.points.forEach(pt => {
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+                ctx.beginPath();
+                ctx.arc(explosionEffect.x, explosionEffect.y, explosionEffect.radius, 0, Math.PI * 2);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${explosionEffect.alpha})`;
+                ctx.stroke();
+                ctx.restore();
+
+                explosionEffect.radius += 5;
+                explosionEffect.alpha -= 0.04;
+                if (explosionEffect.alpha <= 0 || explosionEffect.radius >= explosionEffect.maxRadius) {
+                    explosionEffect = null;
+                }
+            }
 
             ctx.lineWidth = 4;
             ctx.strokeStyle = '#78350F';
