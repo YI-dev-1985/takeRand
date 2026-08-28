@@ -129,7 +129,7 @@
 
     <!-- Quick Guide Modal / Help -->
     <footer class="w-full max-w-6xl text-center text-xs text-amber-900/70 mt-1">
-        💡 <span class="font-semibold">조작법:</span> [방법 1] 병뚜껑을 직접 드래그 | [방법 2] 하단 다이얼 조준 후 패드를 당겨 발사!
+        💡 <span class="font-semibold">조작법:</span> 기지 안을 눌러 위치를 잡고, 병뚜껑을 당기거나 하단 패드로 발사하세요!
     </footer>
 
     <script>
@@ -239,7 +239,7 @@
         let CAP_RADIUS = 14;
         let FRICTION = 0.965;
         let BOUNCE_RESTITUTION = 0.8;
-        let MIN_VELOCITY = 0.15;
+        let MIN_VELOCITY = 0.2;
 
         let screenWidth = 0, screenHeight = 0;
         let currentPlayer = 1;
@@ -250,6 +250,7 @@
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
 
+        let isSettingPosition = false; // 위치 설정 단계인지 여부
         let isDraggingCap = false;
         let dragStartPos = { x: 0, y: 0 };
         let dragCurrentPos = { x: 0, y: 0 };
@@ -458,6 +459,7 @@
             currentShot = 0;
             turnPath = [];
             isMoving = false;
+            isSettingPosition = false;
             isDraggingCap = false;
             isPullingFlick = false;
             cap.vx = 0;
@@ -635,7 +637,7 @@
             };
         }
 
-        // Direct Cap Drag (Only sets position on click/touch, does NOT launch immediately)
+        // --- Safe Board Interaction (Position Selection vs Drag Flick) ---
         function handleBoardClick(e) {
             if (isMoving || gameOver) return;
 
@@ -658,19 +660,28 @@
                 activeCapY = currentPlayer === 1 ? MAP_HEIGHT - (baseRadiusCalculated * 0.4) : baseRadiusCalculated * 0.4;
             }
 
-            // Verify if click is within territory
-            if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
-                cap.x = mapPos.x;
-                cap.y = mapPos.y;
-                turnPath = [{ x: mapPos.x, y: mapPos.y }];
-            } else {
-                showToast("기지 내부에서 시작 위치를 선택하세요!");
-                return;
+            const distToCap = Math.hypot(mapPos.x - activeCapX, mapPos.y - activeCapY);
+
+            if (currentShot === 0) {
+                // First shot: Check if clicking inside territory to place cap without immediate launch
+                if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
+                    cap.x = mapPos.x;
+                    cap.y = mapPos.y;
+                    turnPath = [{ x: mapPos.x, y: mapPos.y }];
+                    showToast("출발 위치가 지정되었습니다! 병뚜껑을 당기거나 하단 패드를 사용하세요.");
+                    return; // Position placed safely without shooting
+                } else {
+                    showToast("기지 내부에서 시작 위치를 선택하세요!");
+                    return;
+                }
             }
 
-            isDraggingCap = true;
-            dragStartPos = { x: cap.x, y: cap.y };
-            dragCurrentPos = mapPos;
+            // Subsequent shots: Prepare drag-to-flick
+            if (distToCap <= CAP_RADIUS * 3.5) {
+                isDraggingCap = true;
+                dragStartPos = { x: cap.x, y: cap.y };
+                dragCurrentPos = mapPos;
+            }
         }
 
         function handleBoardMove(e) {
@@ -703,7 +714,7 @@
             const dy = dragStartPos.y - dragCurrentPos.y;
             const pullDistance = Math.hypot(dx, dy);
 
-            if (pullDistance < 6) return; // If clicked without dragging, keep position without launching
+            if (pullDistance < 6) return;
 
             const maxPullDistance = 160;
             const maxSpeed = isLargeMode ? 26 : 22;
@@ -1112,7 +1123,6 @@
                 ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
                 ctx.fill();
             } else if (!isMoving) {
-                // Wheel Steering Arrow Preview (Length scales dynamically with bottom pull pad distance!)
                 const startOffset = CAP_RADIUS + 3;
                 const baseArrowLen = 25;
                 const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
