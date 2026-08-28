@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v1.60</title>
+    <title>땅따먹기 v1.70</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,7 +22,7 @@
     <header class="w-full max-w-6xl bg-amber-800 text-amber-50 rounded-lg p-2 shadow flex justify-between items-center mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.60</span>
+            <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v1.70</span>
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -97,7 +97,7 @@
         </div>
     </main>
 
-    <!-- Controls Dashboard with Confirm/Unlock Button next to Wheel -->
+    <!-- Controls Dashboard -->
     <div class="w-full max-w-6xl bg-amber-900/90 text-white rounded-lg p-2 mt-1 shadow flex items-center justify-around gap-3 border border-amber-700">
         <!-- Wheel Steering & Position Lock/Unlock Group -->
         <div class="flex items-center gap-2.5">
@@ -251,7 +251,7 @@
         let isMoving = false;
         let gameOver = false;
         let moveTimer = 0;
-        let isPositionConfirmed = false; // 위치 확정(고정) 상태
+        let isPositionConfirmed = false;
 
         let aimAngle = (315 * Math.PI) / 180;
         let wheelRotation = 315;
@@ -466,7 +466,7 @@
             isMoving = false;
             isDraggingCap = false;
             isPullingFlick = false;
-            isPositionConfirmed = false; // 기본적으로 위치 수정 가능 상태
+            isPositionConfirmed = false;
             cap.vx = 0;
             cap.vy = 0;
             moveTimer = 0;
@@ -512,6 +512,18 @@
             const px = Math.floor(x);
             const py = Math.floor(y);
             if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) return false;
+            
+            // 레드 기지: 좌측 하단 (0, MAP_HEIGHT) 기준
+            if (player === 1) {
+                const distFromBottomLeft = Math.hypot(px, MAP_HEIGHT - py);
+                if (distFromBottomLeft <= baseRadiusCalculated) return true;
+            }
+            // 블루 기지: 우측 상단 (MAP_WIDTH, 0) 기준
+            if (player === 2) {
+                const distFromTopRight = Math.hypot(MAP_WIDTH - px, py);
+                if (distFromTopRight <= baseRadiusCalculated) return true;
+            }
+
             const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
             const pixel = ctxToCheck.getImageData(px, py, 1, 1).data;
             return pixel[3] > 128;
@@ -642,10 +654,18 @@
         }
 
         function screenToMapPos(screenX, screenY) {
-            if (!isLargeMode) return { x: screenX, y: screenY };
+            const rect = canvas.getBoundingClientRect();
+            // 화면 CSS 크기 대비 캔버스 실제 픽셀 해상도 비율 계산
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const rawX = screenX * scaleX;
+            const rawY = screenY * scaleY;
+
+            if (!isLargeMode) return { x: rawX, y: rawY };
             return {
-                x: camera.x + (screenX / camera.zoom),
-                y: camera.y + (screenY / camera.zoom)
+                x: camera.x + (rawX / camera.zoom),
+                y: camera.y + (rawY / camera.zoom)
             };
         }
 
@@ -676,7 +696,6 @@
 
             const distToCap = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
 
-            // 위치가 확정되지 않았거나 1번째 샷일 때 기지 내 터치 시 위치 지정 가능
             if (!isPositionConfirmed && currentShot === 0) {
                 if (isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
                     cap.x = mapPos.x;
@@ -690,7 +709,6 @@
                 }
             }
 
-            // 위치가 확정된 후에는 병뚜껑 드래그 발사
             if (isPositionConfirmed && distToCap <= CAP_RADIUS * 3.5) {
                 isDraggingCap = true;
                 dragStartPos = { x: cap.x, y: cap.y };
@@ -698,7 +716,6 @@
             }
         }
 
-        // 위치 확정 / 해제 토글 버튼 이벤트
         confirmPosBtn.addEventListener('click', () => {
             isPositionConfirmed = !isPositionConfirmed;
             updateConfirmButtonUI();
@@ -713,8 +730,11 @@
             const scr = getScreenPos(e);
 
             if (isLargeMode && isPanning) {
-                const dx = (scr.x - panStart.x) / camera.zoom;
-                const dy = (scr.y - panStart.y) / camera.zoom;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const dx = ((scr.x - panStart.x) * scaleX) / camera.zoom;
+                const dy = ((scr.y - panStart.y) * scaleY) / camera.zoom;
                 camera.x -= dx;
                 camera.y -= dy;
                 panStart = { x: scr.x, y: scr.y };
