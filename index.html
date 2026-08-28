@@ -2,608 +2,923 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>땅따먹기 v14.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>추억의 병뚜껑 땅따먹기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --bg: #1a1a2e; --panel: #16213e;
-            --player1: #4ecca3; --player2: #ff6b6b;
-            --neutral: #2a2a4a; --wall: #ffd700;
-            --accent: #e94560; --button: #ffd700;
+        body {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'GmarketSansMedium', sans-serif, system-ui;
         }
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-        html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; align-items:center; touch-action:none; }
-        #game-container { display:flex; flex-direction:column; align-items:center; width:100%; height:100%; max-width:900px; padding:max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap:6px; }
-        #hud { display:flex; justify-content:space-between; align-items:center; width:100%; background:var(--panel); border-radius:16px; padding:10px 16px; }
-        .hud-side { display:flex; align-items:center; gap:8px; }
-        .hud-name { font-weight:700; font-size:14px; }
-        .hud-score { font-size:20px; font-weight:900; min-width:45px; text-align:center; }
-        #version-badge { font-size:10px; color:#aaa; background:#222; padding:3px 10px; border-radius:10px; }
-        #turn-info { font-size:13px; font-weight:600; color:#fff; }
-        #board-wrapper { flex:1; width:100%; position:relative; display:flex; align-items:center; justify-content:center; min-height:0; }
-        canvas { border-radius:16px; background:#1a1a2e; box-shadow:0 8px 30px rgba(0,0,0,0.6); width:100%; height:100%; object-fit:contain; touch-action:none; }
-        #overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); border-radius:16px; z-index:10; opacity:0; pointer-events:none; transition:0.3s; }
-        #overlay.active { opacity:1; pointer-events:auto; }
-        #overlay-title { font-size:2.2rem; font-weight:900; margin-bottom:6px; }
-        #btn-restart { padding:12px 32px; font-size:18px; font-weight:900; border:none; border-radius:30px; background:var(--accent); color:#fff; cursor:pointer; }
-        #controls { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; background:var(--panel); border-radius:16px; flex-wrap:wrap; }
-        #gauge-wrapper { display:flex; align-items:center; gap:6px; flex:1; min-width:100px; }
-        #gauge-bar-bg { flex:1; height:16px; background:#333; border-radius:10px; overflow:hidden; }
-        #gauge-bar { height:100%; width:0%; background:linear-gradient(90deg, #4ecca3, #ffd700, #ff6b6b); border-radius:10px; }
-        #gauge-value { font-size:16px; font-weight:900; color:#fff; min-width:40px; text-align:center; }
-        .btn { padding:10px 18px; font-size:14px; font-weight:900; border:none; border-radius:25px; cursor:pointer; }
-        .btn:active { transform:scale(0.9); }
-        .btn:disabled { background:#444; color:#888; opacity:0.5; }
-        #btn-confirm { background:var(--player1); color:#fff; }
-        #btn-cancel { background:var(--player2); color:#fff; }
-        #btn-fire { background:var(--button); color:#000; padding:10px 28px; font-size:18px; }
-        #dial-wrapper { position:relative; width:55px; height:55px; }
-        #dial { width:55px; height:55px; border-radius:50%; background:#333; border:3px solid #ffd700; cursor:pointer; }
-        #dial-arrow { position:absolute; top:50%; left:50%; width:3px; height:22px; background:#ffd700; transform-origin:bottom center; transform:translate(-50%, -100%); }
-        #instructions { color:#888; font-size:11px; text-align:center; }
-        #success-toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(78,204,163,0.95); color:#fff; padding:20px 40px; border-radius:20px; font-size:28px; font-weight:900; z-index:20; pointer-events:none; opacity:0; transition:opacity 0.3s; }
+        canvas {
+            touch-action: none;
+        }
     </style>
 </head>
-<body>
-<div id="game-container">
-    <div id="hud">
-        <div class="hud-side">
-            <span style="font-size:20px;">🟢</span>
-            <div><div class="hud-name" style="color:var(--player1);">P1</div><div class="hud-score" id="p1-score">0%</div></div>
+<body class="bg-amber-100 min-h-screen flex flex-col items-center justify-between p-2 md:p-3">
+    <!-- Header Controls -->
+    <header class="w-full max-w-5xl bg-amber-800 text-amber-50 rounded-xl p-2.5 shadow-md flex justify-between items-center mb-1.5">
+        <div>
+            <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
+                <span>⛳ 추억의 땅따먹기</span>
+            </h1>
+            <p class="text-xs text-amber-200">1~2턴 기지 조기복귀 아웃! 반드시 3번째 턴에 기지로 돌아오세요.</p>
         </div>
-        <div style="text-align:center;"><div id="turn-info"></div><div id="version-badge">v14.0</div></div>
-        <div class="hud-side">
-            <div style="text-align:right;"><div class="hud-name" style="color:var(--player2);">P2</div><div class="hud-score" id="p2-score">0%</div></div>
-            <span style="font-size:20px;">🔴</span>
+        <div class="flex items-center gap-2">
+            <!-- Map Size Selector -->
+            <div class="flex bg-amber-950/60 p-1 rounded-lg text-xs font-semibold items-center gap-1 border border-amber-600/50">
+                <span class="text-amber-200 px-1 hidden sm:inline">맵 크기:</span>
+                <button id="mapSizeSmall" class="px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold">소형</button>
+                <button id="mapSizeMedium" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">중형</button>
+                <button id="mapSizeLarge" class="px-2 py-1 rounded hover:bg-amber-700 text-amber-100">대형</button>
+            </div>
+            <button id="resetBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-1.5 px-3 rounded-lg text-xs md:text-sm transition shadow">
+                새 게임
+            </button>
+        </div>
+    </header>
+
+    <!-- Game Status Bar -->
+    <div class="w-full max-w-5xl bg-white/90 backdrop-blur rounded-lg p-2 shadow-sm mb-1.5 flex justify-around items-center text-xs md:text-sm border border-amber-200">
+        <div id="p1Status" class="flex items-center gap-2 font-bold text-red-600 px-3 py-1 rounded-full border-2 border-red-500 bg-red-50">
+            <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+            <span>Player 1: <span id="p1Score">0</span>% (기지 <span id="p1BaseRatio">100</span>%)</span>
+        </div>
+        
+        <div class="text-center px-2">
+            <span id="turnIndicator" class="font-extrabold text-amber-900 text-sm md:text-base">Player 1 턴</span>
+            <div id="shotsLeft" class="text-xs text-gray-600 font-medium">남은 횟수: 3/3</div>
+        </div>
+
+        <div id="p2Status" class="flex items-center gap-2 font-bold text-blue-600 px-3 py-1 rounded-full border-2 border-transparent opacity-60">
+            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+            <span>Player 2: <span id="p2Score">0</span>% (기지 <span id="p2BaseRatio">100</span>%)</span>
         </div>
     </div>
-    <div id="board-wrapper">
-        <canvas id="gameCanvas"></canvas>
-        <div id="success-toast">🎉 영역 획득!</div>
-        <div id="overlay"><div id="overlay-title"></div><div id="overlay-desc"></div><button id="btn-restart">🔄 다시 시작</button></div>
-    </div>
-    <div id="controls">
-        <div id="gauge-wrapper"><span style="font-weight:700;font-size:13px;color:#fff;">파워</span><div id="gauge-bar-bg"><div id="gauge-bar"></div></div><span id="gauge-value">5.0</span></div>
-        <div id="dial-wrapper"><div id="dial"></div><div id="dial-arrow"></div></div>
-        <button class="btn" id="btn-confirm">✅ 완료</button>
-        <button class="btn" id="btn-cancel">🔄 재설정</button>
-        <button class="btn" id="btn-fire">🚀 발사</button>
-    </div>
-    <div id="instructions">👆 내 영역 터치 → ✅ 완료 → 🎯 다이얼 → 🚀 발사</div>
-</div>
-<script>
-(() => {
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const p1ScoreEl = document.getElementById('p1-score');
-    const p2ScoreEl = document.getElementById('p2-score');
-    const turnInfoEl = document.getElementById('turn-info');
-    const gaugeBar = document.getElementById('gauge-bar');
-    const gaugeValueEl = document.getElementById('gauge-value');
-    const btnFire = document.getElementById('btn-fire');
-    const btnConfirm = document.getElementById('btn-confirm');
-    const btnCancel = document.getElementById('btn-cancel');
-    const btnRestart = document.getElementById('btn-restart');
-    const successToast = document.getElementById('success-toast');
-    const dial = document.getElementById('dial');
-    const dialArrow = document.getElementById('dial-arrow');
-    const overlay = document.getElementById('overlay');
-    const overlayTitle = document.getElementById('overlay-title');
-    const overlayDesc = document.getElementById('overlay-desc');
 
-    const BASE_SIZE = 90, BALL_RADIUS = 5, WALL_THICKNESS = 4;
-    const FRICTION = 0.99, MAX_SPEED = 10, MIN_SPEED = 0.2;
-    const MAX_SHOTS = 3, BASE_LOSS_RATIO = 0.5, POWER_MAX = 10;
-    const TRAIL_THICKNESS = 3;
-    const P1 = 1, P2 = 2, NEUTRAL = 0;
+    <!-- Canvas Container -->
+    <main class="w-full max-w-5xl h-[70vh] md:h-[75vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
+        <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+        
+        <!-- Viewport Controls Overlay -->
+        <div class="absolute bottom-3 right-3 flex flex-col gap-2 z-10">
+            <div class="flex bg-black/60 backdrop-blur rounded-lg p-1 text-white gap-1 shadow-lg">
+                <button id="zoomInBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg">+</button>
+                <button id="zoomOutBtn" class="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded font-bold text-lg">-</button>
+                <button id="recenterBtn" class="px-2.5 h-8 flex items-center justify-center bg-amber-600 hover:bg-amber-500 rounded font-bold text-xs shadow">🎯 내 위치</button>
+            </div>
+            <button id="panToggleBtn" class="bg-black/60 hover:bg-black/80 text-white text-xs py-1.5 px-2.5 rounded-lg backdrop-blur flex items-center justify-center gap-1 font-semibold border border-white/20 shadow-lg">
+                <span>✋ 시점 이동 모드:</span> <span id="panStatus" class="text-red-400">OFF</span>
+            </button>
+        </div>
 
-    let BOARD_W = 800, BOARD_H = 500;
-    let BASE1_X, BASE1_Y, BASE2_X, BASE2_Y, TOTAL_AREA, BASE_AREA;
+        <!-- Toast Notification Message -->
+        <div id="toast" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 text-white font-bold text-base md:text-xl px-6 py-3 rounded-full pointer-events-none opacity-0 transition-opacity duration-300 shadow-2xl text-center z-10">
+            메시지
+        </div>
 
-    let offCanvas, offCtx, imgData;
-    let territoryData, wallData;
-    let trailPoints = [];  // 이동 라인 저장
+        <!-- Victory Modal Overlay -->
+        <div id="victoryModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center z-20 text-white p-4">
+            <div class="bg-amber-900 border-4 border-amber-500 rounded-2xl p-6 text-center max-w-md shadow-2xl">
+                <h2 id="victoryTitle" class="text-2xl md:text-3xl font-extrabold mb-2 text-amber-300">🎉 승리!</h2>
+                <p id="victoryDesc" class="text-sm md:text-base mb-6 text-amber-100">승리 조건이 달성되었습니다!</p>
+                <button id="modalResetBtn" class="bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold py-2 px-6 rounded-xl text-base shadow-lg transition">
+                    다시 하기
+                </button>
+            </div>
+        </div>
+    </main>
 
-    let currentPlayer = P1;
-    let shotsLeft = MAX_SHOTS;
-    let shotsFired = 0;
-    let hasLeftBase = false;
-    let gameOver = false;
-    let turnInProgress = false;
-    let placingMode = true;
-    let failed = false;
-    let aimAngle = 0, dialAngle = 0;
+    <!-- Quick Guide Modal / Help -->
+    <footer class="w-full max-w-5xl text-center text-xs text-amber-900/70 mt-1">
+        💡 <span class="font-semibold">조작법:</span> [🎯 내 위치] 버튼으로 기지로 시점 복귀 | 1~2턴 기지 복귀 시 아웃! | 땅 90% 달성 시 승리!
+    </footer>
 
-    let ball = { x: 0, y: 0, vx: 0, vy: 0, moving: false };
-    let pathPoints = [];
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    let gaugeAnimId = null, gaugeDirection = 1, gaugeValueCurrent = 5;
-    let canvasW = 0, canvasH = 0, dpr = 1, scaleX = 1, scaleY = 1;
-    let animId = null;
-    let dialDragging = false, dialCX = 0, dialCY = 0;
+        // UI elements
+        const p1ScoreEl = document.getElementById('p1Score');
+        const p2ScoreEl = document.getElementById('p2Score');
+        const p1BaseRatioEl = document.getElementById('p1BaseRatio');
+        const p2BaseRatioEl = document.getElementById('p2BaseRatio');
+        const turnIndicatorEl = document.getElementById('turnIndicator');
+        const shotsLeftEl = document.getElementById('shotsLeft');
+        const toastEl = document.getElementById('toast');
+        const p1StatusEl = document.getElementById('p1Status');
+        const p2StatusEl = document.getElementById('p2Status');
+        const victoryModal = document.getElementById('victoryModal');
+        const victoryTitle = document.getElementById('victoryTitle');
+        const victoryDesc = document.getElementById('victoryDesc');
+        const panStatusEl = document.getElementById('panStatus');
+        const panToggleBtn = document.getElementById('panToggleBtn');
 
-    function initOffscreen() {
-        offCanvas = document.createElement('canvas');
-        offCanvas.width = BOARD_W; offCanvas.height = BOARD_H;
-        offCtx = offCanvas.getContext('2d');
-        imgData = offCtx.createImageData(BOARD_W, BOARD_H);
-        territoryData = new Uint8Array(BOARD_W * BOARD_H);
-        wallData = new Uint8Array(BOARD_W * BOARD_H);
-        trailPoints = [];
-        for (let i = 0; i < territoryData.length; i++) {
-            imgData.data[i*4] = 42;
-            imgData.data[i*4+1] = 42;
-            imgData.data[i*4+2] = 74;
-            imgData.data[i*4+3] = 255;
+        const mapSizeSmallBtn = document.getElementById('mapSizeSmall');
+        const mapSizeMediumBtn = document.getElementById('mapSizeMedium');
+        const mapSizeLargeBtn = document.getElementById('mapSizeLarge');
+
+        // Audio Effects using Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playFlickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
         }
-    }
 
-    function paintPixel(x, y, owner) {
-        if (x<0||x>=BOARD_W||y<0||y>=BOARD_H) return;
-        const idx = y*BOARD_W+x;
-        territoryData[idx] = owner;
-        const p = idx*4;
-        if (owner===P1) { imgData.data[p]=78; imgData.data[p+1]=204; imgData.data[p+2]=163; }
-        else if (owner===P2) { imgData.data[p]=255; imgData.data[p+1]=107; imgData.data[p+2]=107; }
-        imgData.data[p+3]=255;
-    }
+        function playBounceSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
 
-    // ★ 색칠 로직 - 벽을 두껍게 확장하여 Flood Fill
-    function floodFillAndPaint(startX, startY, owner) {
-        // 벽 확장 (Flood Fill이 벽을 통과하지 못하도록)
-        const expandedWalls = new Uint8Array(BOARD_W * BOARD_H);
-        for (let i = 0; i < wallData.length; i++) {
-            if (wallData[i] === 1) {
-                const x = i % BOARD_W, y = Math.floor(i / BOARD_W);
-                for (let dy = -2; dy <= 2; dy++) {
-                    for (let dx = -2; dx <= 2; dx++) {
-                        const nx = x+dx, ny = y+dy;
-                        if (nx>=0 && nx<BOARD_W && ny>=0 && ny<BOARD_H) {
-                            expandedWalls[ny*BOARD_W+nx] = 1;
-                        }
+        function playSuccessSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(554, now + 0.1);
+            osc.frequency.setValueAtTime(659, now + 0.2);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.35);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(now + 0.35);
+        }
+
+        function playFailSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(now + 0.25);
+        }
+
+        // Map Size Preset Configurations
+        const MAP_PRESETS = {
+            small: { width: 1000, height: 700, baseRadius: 160, capRadius: 14 },
+            medium: { width: 1600, height: 1100, baseRadius: 210, capRadius: 16 },
+            large: { width: 2400, height: 1600, baseRadius: 260, capRadius: 18 }
+        };
+
+        let currentPresetKey = 'small';
+        let MAP_WIDTH = MAP_PRESETS.small.width;
+        let MAP_HEIGHT = MAP_PRESETS.small.height;
+        let CAP_RADIUS = MAP_PRESETS.small.capRadius;
+
+        const FRICTION = 0.965;
+        const BOUNCE_RESTITUTION = 0.8;
+        const MIN_VELOCITY = 0.15;
+
+        let screenWidth, screenHeight;
+        let currentPlayer = 1; // 1: Red, 2: Blue
+        let currentShot = 0;   // 0, 1, 2
+        let isMoving = false;
+        let isDragging = false;
+        let gameOver = false;
+
+        // Viewport Camera State
+        let camera = {
+            x: 0,
+            y: 0,
+            zoom: 1.0,
+            minZoom: 0.3,
+            maxZoom: 2.5
+        };
+
+        let isPanning = false;
+        let panModeActive = false;
+        let panStart = { x: 0, y: 0 };
+
+        let dragStart = { x: 0, y: 0 };
+        let dragCurrent = { x: 0, y: 0 };
+
+        // Offscreen Canvases for Player Territories
+        let p1Canvas, p1Ctx;
+        let p2Canvas, p2Ctx;
+
+        // Base Initial Area Tracking
+        let p1InitialArea = 0;
+        let p2InitialArea = 0;
+
+        // Player Cap State
+        let cap = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0
+        };
+
+        // Path history during current turn
+        let turnPath = [];
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            
+            screenWidth = Math.floor(rect.width);
+            screenHeight = Math.floor(rect.height);
+
+            canvas.width = screenWidth;
+            canvas.height = screenHeight;
+
+            camera.minZoom = Math.max(screenWidth / MAP_WIDTH, screenHeight / MAP_HEIGHT);
+            if (camera.zoom < camera.minZoom) camera.zoom = camera.minZoom;
+
+            clampCamera();
+            render();
+        }
+
+        function setMapPreset(key) {
+            currentPresetKey = key;
+            const preset = MAP_PRESETS[key];
+            MAP_WIDTH = preset.width;
+            MAP_HEIGHT = preset.height;
+            CAP_RADIUS = preset.capRadius;
+
+            // Update UI Button Styles
+            [mapSizeSmallBtn, mapSizeMediumBtn, mapSizeLargeBtn].forEach(btn => {
+                btn.className = "px-2 py-1 rounded hover:bg-amber-700 text-amber-100";
+            });
+            if (key === 'small') mapSizeSmallBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+            if (key === 'medium') mapSizeMediumBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+            if (key === 'large') mapSizeLargeBtn.className = "px-2 py-1 rounded bg-amber-500 text-amber-950 font-bold";
+
+            initGame();
+        }
+
+        function initGame() {
+            gameOver = false;
+            victoryModal.classList.add('hidden');
+
+            const preset = MAP_PRESETS[currentPresetKey];
+
+            p1Canvas = document.createElement('canvas');
+            p1Canvas.width = MAP_WIDTH;
+            p1Canvas.height = MAP_HEIGHT;
+            p1Ctx = p1Canvas.getContext('2d');
+
+            p2Canvas = document.createElement('canvas');
+            p2Canvas.width = MAP_WIDTH;
+            p2Canvas.height = MAP_HEIGHT;
+            p2Ctx = p2Canvas.getContext('2d');
+
+            // Draw Initial Base (Bottom-Left: P1, Top-Right: P2)
+            const baseRadius = preset.baseRadius;
+
+            // Player 1 Base (Bottom-Left)
+            p1Ctx.fillStyle = '#FF0000';
+            p1Ctx.beginPath();
+            p1Ctx.arc(0, MAP_HEIGHT, baseRadius, 0, Math.PI * 2);
+            p1Ctx.fill();
+
+            // Player 2 Base (Top-Right)
+            p2Ctx.fillStyle = '#0000FF';
+            p2Ctx.beginPath();
+            p2Ctx.arc(MAP_WIDTH, 0, baseRadius, 0, Math.PI * 2);
+            p2Ctx.fill();
+
+            // Record initial base areas
+            p1InitialArea = calculateAreaPixels(p1Ctx);
+            p2InitialArea = calculateAreaPixels(p2Ctx);
+
+            currentPlayer = 1;
+            resetTurnState();
+            
+            // Default camera zoom fit according to map size
+            if (currentPresetKey === 'small') camera.zoom = 0.9;
+            else if (currentPresetKey === 'medium') camera.zoom = 0.65;
+            else camera.zoom = 0.45;
+
+            camera.minZoom = Math.max(screenWidth / MAP_WIDTH, screenHeight / MAP_HEIGHT);
+            if (camera.zoom < camera.minZoom) camera.zoom = camera.minZoom;
+
+            recenterCameraOnCurrentPlayer();
+            updateScores();
+            updateUI();
+        }
+
+        function recenterCameraOnCurrentPlayer() {
+            let focusX, focusY;
+            const preset = MAP_PRESETS[currentPresetKey];
+
+            if (currentShot > 0 && cap.x >= 0) {
+                focusX = cap.x;
+                focusY = cap.y;
+            } else {
+                // Point focus offset towards the interior of the map from corner bases
+                if (currentPlayer === 1) {
+                    focusX = preset.baseRadius * 0.75;
+                    focusY = MAP_HEIGHT - (preset.baseRadius * 0.75);
+                } else {
+                    focusX = MAP_WIDTH - (preset.baseRadius * 0.75);
+                    focusY = preset.baseRadius * 0.75;
+                }
+            }
+
+            camera.x = focusX - (screenWidth / (2 * camera.zoom));
+            camera.y = focusY - (screenHeight / (2 * camera.zoom));
+            clampCamera();
+        }
+
+        function clampCamera() {
+            const visibleW = screenWidth / camera.zoom;
+            const visibleH = screenHeight / camera.zoom;
+
+            if (visibleW >= MAP_WIDTH) {
+                camera.x = (MAP_WIDTH - visibleW) / 2;
+            } else {
+                camera.x = Math.max(0, Math.min(MAP_WIDTH - visibleW, camera.x));
+            }
+
+            if (visibleH >= MAP_HEIGHT) {
+                camera.y = (MAP_HEIGHT - visibleH) / 2;
+            } else {
+                camera.y = Math.max(0, Math.min(MAP_HEIGHT - visibleH, camera.y));
+            }
+        }
+
+        function resetTurnState() {
+            currentShot = 0;
+            turnPath = [];
+            isMoving = false;
+            isDragging = false;
+            cap.vx = 0;
+            cap.vy = 0;
+            cap.x = -100;
+            cap.y = -100;
+        }
+
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.style.opacity = '1';
+            setTimeout(() => {
+                toastEl.style.opacity = '0';
+            }, 1800);
+        }
+
+        function isPointInTerritory(x, y, player) {
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
+            const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
+            const pixel = ctxToCheck.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            return pixel[3] > 128;
+        }
+
+        function calculateAreaPixels(targetCtx) {
+            const sampleStep = 12;
+            let count = 0;
+            const data = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+
+            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
+                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
+                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
+                    if (data[idx] > 128) count++;
+                }
+            }
+            return count;
+        }
+
+        function updateScores() {
+            const sampleStep = 12;
+            let p1Count = 0;
+            let p2Count = 0;
+            let total = 0;
+
+            const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+            const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+
+            for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
+                for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
+                    const idx = (y * MAP_WIDTH + x) * 4 + 3;
+                    total++;
+                    if (p1Data[idx] > 128) p1Count++;
+                    if (p2Data[idx] > 128) p2Count++;
+                }
+            }
+
+            const p1PercentFloat = (p1Count / total) * 100;
+            const p2PercentFloat = (p2Count / total) * 100;
+
+            const p1Percent = p1PercentFloat.toFixed(1);
+            const p2Percent = p2PercentFloat.toFixed(1);
+
+            const p1Ratio = Math.min(100, Math.round((p1Count / p1InitialArea) * 100));
+            const p2Ratio = Math.min(100, Math.round((p2Count / p2InitialArea) * 100));
+
+            p1ScoreEl.textContent = p1Percent;
+            p2ScoreEl.textContent = p2Percent;
+            p1BaseRatioEl.textContent = p1Ratio;
+            p2BaseRatioEl.textContent = p2Ratio;
+
+            // Victory Rule Check
+            if (p1PercentFloat >= 90.0) {
+                triggerVictory(1, "Player 1이 전체 맵의 90% 이상을 차지했습니다!");
+            } else if (p2PercentFloat >= 90.0) {
+                triggerVictory(2, "Player 2가 전체 맵의 90% 이상을 차지했습니다!");
+            } else if (p2Ratio <= 50) {
+                triggerVictory(1, "Player 2(블루)의 기지가 절반 이하로 줄어들었습니다!");
+            } else if (p1Ratio <= 50) {
+                triggerVictory(2, "Player 1(레드)의 기지가 절반 이하로 줄어들었습니다!");
+            }
+        }
+
+        function triggerVictory(winner, desc) {
+            gameOver = true;
+            playSuccessSound();
+            victoryTitle.textContent = `🎉 Player ${winner} (${winner === 1 ? '레드' : '블루'}) 승리!`;
+            victoryDesc.textContent = desc;
+            victoryModal.classList.remove('hidden');
+        }
+
+        function switchTurn(message, isSuccess = false) {
+            if (gameOver) return;
+
+            if (message) showToast(message);
+            if (isSuccess) playSuccessSound(); else playFailSound();
+
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            resetTurnState();
+            recenterCameraOnCurrentPlayer();
+            updateUI();
+        }
+
+        function updateUI() {
+            turnIndicatorEl.textContent = `Player ${currentPlayer} (${currentPlayer === 1 ? '레드' : '블루'}) 턴`;
+            turnIndicatorEl.className = `font-extrabold text-sm md:text-base ${currentPlayer === 1 ? 'text-red-600' : 'text-blue-600'}`;
+            shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
+
+            if (currentPlayer === 1) {
+                p1StatusEl.classList.add('border-red-500', 'bg-red-50', 'opacity-100');
+                p1StatusEl.classList.remove('border-transparent', 'opacity-60');
+                p2StatusEl.classList.add('border-transparent', 'opacity-60');
+                p2StatusEl.classList.remove('border-blue-500', 'bg-blue-50', 'opacity-100');
+            } else {
+                p2StatusEl.classList.add('border-blue-500', 'bg-blue-50', 'opacity-100');
+                p2StatusEl.classList.remove('border-transparent', 'opacity-60');
+                p1StatusEl.classList.add('border-transparent', 'opacity-60');
+                p1StatusEl.classList.remove('border-red-500', 'bg-red-50', 'opacity-100');
+            }
+        }
+
+        function captureTerritory() {
+            if (turnPath.length < 2) return;
+
+            const targetCtx = currentPlayer === 1 ? p1Ctx : p2Ctx;
+            const enemyCtx = currentPlayer === 1 ? p2Ctx : p1Ctx;
+
+            targetCtx.fillStyle = currentPlayer === 1 ? '#FF0000' : '#0000FF';
+            targetCtx.beginPath();
+            targetCtx.moveTo(turnPath[0].x, turnPath[0].y);
+
+            for (let i = 1; i < turnPath.length; i++) {
+                targetCtx.lineTo(turnPath[i].x, turnPath[i].y);
+            }
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            enemyCtx.globalCompositeOperation = 'destination-out';
+            enemyCtx.beginPath();
+            enemyCtx.moveTo(turnPath[0].x, turnPath[0].y);
+            for (let i = 1; i < turnPath.length; i++) {
+                enemyCtx.lineTo(turnPath[i].x, turnPath[i].y);
+            }
+            enemyCtx.closePath();
+            enemyCtx.fill();
+            enemyCtx.globalCompositeOperation = 'source-over';
+
+            updateScores();
+        }
+
+        // Coordinate Conversion Helpers
+        function screenToMapPos(screenX, screenY) {
+            return {
+                x: camera.x + (screenX / camera.zoom),
+                y: camera.y + (screenY / camera.zoom)
+            };
+        }
+
+        function getScreenPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Input Handlers
+        function handleStart(e) {
+            if (isMoving || gameOver) return;
+
+            if (e.button === 2 || panModeActive) {
+                isPanning = true;
+                const scr = getScreenPos(e);
+                panStart = { x: scr.x, y: scr.y };
+                return;
+            }
+
+            if (e.button !== 0 && e.type !== 'touchstart') return;
+
+            const scr = getScreenPos(e);
+            const mapPos = screenToMapPos(scr.x, scr.y);
+
+            if (currentShot === 0) {
+                if (!isPointInTerritory(mapPos.x, mapPos.y, currentPlayer)) {
+                    showToast("기지 내부에서 시작해야 합니다!");
+                    return;
+                }
+                cap.x = mapPos.x;
+                cap.y = mapPos.y;
+                turnPath = [{ x: mapPos.x, y: mapPos.y }];
+            } else {
+                const dist = Math.hypot(mapPos.x - cap.x, mapPos.y - cap.y);
+                if (dist > CAP_RADIUS * 3.5) return;
+            }
+
+            isDragging = true;
+            dragStart = { x: cap.x, y: cap.y };
+            dragCurrent = mapPos;
+        }
+
+        function handleMove(e) {
+            const scr = getScreenPos(e);
+
+            if (isPanning) {
+                const dx = (scr.x - panStart.x) / camera.zoom;
+                const dy = (scr.y - panStart.y) / camera.zoom;
+                camera.x -= dx;
+                camera.y -= dy;
+                panStart = { x: scr.x, y: scr.y };
+                clampCamera();
+                return;
+            }
+
+            if (!isDragging) return;
+            dragCurrent = screenToMapPos(scr.x, scr.y);
+        }
+
+        function handleEnd() {
+            if (isPanning) {
+                isPanning = false;
+                return;
+            }
+
+            if (!isDragging) return;
+            isDragging = false;
+
+            const dx = dragStart.x - dragCurrent.x;
+            const dy = dragStart.y - dragCurrent.y;
+            const power = Math.hypot(dx, dy);
+
+            if (power < 5) return;
+
+            const maxPower = 28;
+            const scale = Math.min(power * 0.18, maxPower) / power;
+
+            cap.vx = dx * scale;
+            cap.vy = dy * scale;
+
+            isMoving = true;
+            currentShot++;
+            shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
+
+            playFlickSound();
+        }
+
+        // Pinch Zoom Support
+        let initialPinchDist = null;
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            } else {
+                handleStart(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDist) {
+                const newDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const zoomFactor = newDist / initialPinchDist;
+                camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * (zoomFactor > 1 ? 1.03 : 0.97)));
+                clampCamera();
+                initialPinchDist = newDist;
+            } else {
+                handleMove(e);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            initialPinchDist = null;
+            handleEnd();
+        });
+
+        // Mouse Wheel Zooming
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomAmount = e.deltaY < 0 ? 1.1 : 0.9;
+            const scr = getScreenPos(e);
+            const mapBefore = screenToMapPos(scr.x, scr.y);
+
+            camera.zoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomAmount));
+
+            camera.x = mapBefore.x - (scr.x / camera.zoom);
+            camera.y = mapBefore.y - (scr.y / camera.zoom);
+            clampCamera();
+        }, { passive: false });
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+
+        // Control Buttons Listeners
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            camera.zoom = Math.min(camera.maxZoom, camera.zoom * 1.25);
+            clampCamera();
+        });
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            camera.zoom = Math.max(camera.minZoom, camera.zoom / 1.25);
+            clampCamera();
+        });
+        document.getElementById('recenterBtn').addEventListener('click', () => {
+            recenterCameraOnCurrentPlayer();
+            showToast("내 위치로 이동했습니다.");
+        });
+
+        panToggleBtn.addEventListener('click', () => {
+            panModeActive = !panModeActive;
+            panStatusEl.textContent = panModeActive ? "ON" : "OFF";
+            panStatusEl.className = panModeActive ? "text-green-400 font-bold" : "text-red-400";
+        });
+
+        mapSizeSmallBtn.addEventListener('click', () => setMapPreset('small'));
+        mapSizeMediumBtn.addEventListener('click', () => setMapPreset('medium'));
+        mapSizeLargeBtn.addEventListener('click', () => setMapPreset('large'));
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            initGame();
+            showToast("새 게임 시작!");
+        });
+
+        document.getElementById('modalResetBtn').addEventListener('click', () => {
+            initGame();
+            showToast("새 게임 시작!");
+        });
+
+        // Game Physics Update Loop
+        function updatePhysics() {
+            if (!isMoving || gameOver) return;
+
+            cap.x += cap.vx;
+            cap.y += cap.vy;
+
+            let bounced = false;
+
+            if (cap.x - CAP_RADIUS < 0) {
+                cap.x = CAP_RADIUS;
+                cap.vx = -cap.vx * BOUNCE_RESTITUTION;
+                bounced = true;
+            } else if (cap.x + CAP_RADIUS > MAP_WIDTH) {
+                cap.x = MAP_WIDTH - CAP_RADIUS;
+                cap.vx = -cap.vx * BOUNCE_RESTITUTION;
+                bounced = true;
+            }
+
+            if (cap.y - CAP_RADIUS < 0) {
+                cap.y = CAP_RADIUS;
+                cap.vy = -cap.vy * BOUNCE_RESTITUTION;
+                bounced = true;
+            } else if (cap.y + CAP_RADIUS > MAP_HEIGHT) {
+                cap.y = MAP_HEIGHT - CAP_RADIUS;
+                cap.vy = -cap.vy * BOUNCE_RESTITUTION;
+                bounced = true;
+            }
+
+            if (bounced) {
+                playBounceSound();
+            }
+
+            cap.vx *= FRICTION;
+            cap.vy *= FRICTION;
+
+            // Auto-follow cap with camera
+            camera.x = cap.x - (screenWidth / (2 * camera.zoom));
+            camera.y = cap.y - (screenHeight / (2 * camera.zoom));
+            clampCamera();
+
+            // Record path position
+            const lastPt = turnPath[turnPath.length - 1];
+            if (Math.hypot(cap.x - lastPt.x, cap.y - lastPt.y) > 6) {
+                turnPath.push({ x: cap.x, y: cap.y });
+            }
+
+            // Stop cap movement
+            if (Math.hypot(cap.vx, cap.vy) < MIN_VELOCITY) {
+                cap.vx = 0;
+                cap.vy = 0;
+                isMoving = false;
+
+                const opponentPlayer = currentPlayer === 1 ? 2 : 1;
+                const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
+
+                if (inOpponentTerritory) {
+                    switchTurn("아웃! 상대방 영토 위에서 멈췄습니다!");
+                    return;
+                }
+
+                const inOwnTerritory = isPointInTerritory(cap.x, cap.y, currentPlayer);
+
+                if (currentShot < 3) {
+                    if (inOwnTerritory) {
+                        switchTurn(`실패! ${currentShot}번째 턴에 기지로 돌아왔습니다. (3번째 턴에 돌아와야 함)`);
+                    } else {
+                        showToast(`다음 위치에서 튕기세요 (${currentShot}/3)`);
+                    }
+                } else if (currentShot === 3) {
+                    if (inOwnTerritory) {
+                        captureTerritory();
+                        switchTurn("3턴 만에 땅 넓히기 성공!", true);
+                    } else {
+                        switchTurn("3턴째에 기지로 돌아오지 못했습니다!");
                     }
                 }
             }
         }
 
-        // Flood Fill
-        const visited = new Uint8Array(BOARD_W * BOARD_H);
-        const queue = [startY * BOARD_W + startX];
-        visited[startY * BOARD_W + startX] = 1;
+        // Render Canvas Scene with World Camera Transform
+        function render() {
+            ctx.clearRect(0, 0, screenWidth, screenHeight);
 
-        while (queue.length > 0) {
-            const idx = queue.shift();
-            const x = idx % BOARD_W, y = Math.floor(idx / BOARD_W);
-            for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-                const nx = x+dx, ny = y+dy;
-                if (nx<0||nx>=BOARD_W||ny<0||ny>=BOARD_H) continue;
-                const nidx = ny*BOARD_W+nx;
-                if (visited[nidx]) continue;
-                if (expandedWalls[nidx] === 1) continue;
-                if (territoryData[nidx] !== NEUTRAL && territoryData[nidx] !== owner) continue;
-                visited[nidx] = 1;
-                queue.push(nidx);
+            ctx.save();
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            // Draw Ground Canvas Pattern
+            ctx.fillStyle = '#d7c097';
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            ctx.strokeStyle = 'rgba(120, 80, 20, 0.1)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            for (let x = 0; x < MAP_WIDTH; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_HEIGHT); ctx.stroke();
             }
-        }
-
-        // 색칠
-        let count = 0;
-        for (let i = 0; i < territoryData.length; i++) {
-            if (!visited[i] && territoryData[i] === NEUTRAL) {
-                territoryData[i] = owner;
-                const p = i*4;
-                if (owner===P1) { imgData.data[p]=78; imgData.data[p+1]=204; imgData.data[p+2]=163; }
-                else { imgData.data[p]=255; imgData.data[p+1]=107; imgData.data[p+2]=107; }
-                imgData.data[p+3]=255;
-                count++;
+            for (let y = 0; y < MAP_HEIGHT; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
             }
-        }
 
-        offCtx.putImageData(imgData, 0, 0);
-        console.log(`🎨 ${owner===P1?'P1(초록)':'P2(빨강)'} 영역 ${count}px 색칠 완료`);
-        return count;
-    }
+            // Render Territories with Translucency
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            ctx.drawImage(p1Canvas, 0, 0);
+            ctx.drawImage(p2Canvas, 0, 0);
+            ctx.restore();
 
-    function initDial() {
-        const r = dial.getBoundingClientRect();
-        dialCX = r.left + r.width/2;
-        dialCY = r.top + r.height/2;
-    }
-    function updateDialArrow() { dialArrow.style.transform = `translate(-50%,-100%) rotate(${dialAngle}deg)`; }
-    function getDialAngle(cx, cy) {
-        const dx = cx-dialCX, dy = cy-dialCY;
-        return (Math.atan2(dy,dx)*180/Math.PI + 90 + 360) % 360;
-    }
-    dial.addEventListener('touchstart', e => {
-        e.preventDefault();
-        if(placingMode||ball.moving||gameOver) return;
-        dialDragging = true;
-        const t = e.touches[0];
-        dialAngle = getDialAngle(t.clientX, t.clientY);
-        aimAngle = dialAngle * Math.PI / 180;
-        updateDialArrow(); draw();
-    }, {passive:false});
-    dial.addEventListener('touchmove', e => {
-        e.preventDefault();
-        if(!dialDragging) return;
-        const t = e.touches[0];
-        dialAngle = getDialAngle(t.clientX, t.clientY);
-        aimAngle = dialAngle * Math.PI / 180;
-        updateDialArrow(); draw();
-    }, {passive:false});
-    dial.addEventListener('touchend', () => dialDragging = false);
-    dial.addEventListener('mousedown', e => {
-        if(placingMode||ball.moving||gameOver) return;
-        dialDragging = true;
-        dialAngle = getDialAngle(e.clientX, e.clientY);
-        aimAngle = dialAngle * Math.PI / 180;
-        updateDialArrow(); draw();
-    });
-    dial.addEventListener('mousemove', e => {
-        if(!dialDragging) return;
-        dialAngle = getDialAngle(e.clientX, e.clientY);
-        aimAngle = dialAngle * Math.PI / 180;
-        updateDialArrow(); draw();
-    });
-    dial.addEventListener('mouseup', () => dialDragging = false);
-    dial.addEventListener('mouseleave', () => dialDragging = false);
+            // Render Map Boundary Outer Border
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#78350F';
+            ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-    function adjustBoard() {
-        const r = document.getElementById('board-wrapper').getBoundingClientRect();
-        const aw = Math.max(100, r.width-4), ah = Math.max(100, r.height-4);
-        const ratio = aw/ah;
-        if(ratio > 1.6) { BOARD_H = 500; BOARD_W = Math.floor(500*ratio); }
-        else { BOARD_W = 800; BOARD_H = Math.floor(800/ratio); }
-        BASE1_X = BOARD_W/2; BASE1_Y = BASE_SIZE/2;
-        BASE2_X = BOARD_W/2; BASE2_Y = BOARD_H - BASE_SIZE/2;
-        TOTAL_AREA = BOARD_W * BOARD_H;
-        BASE_AREA = BASE_SIZE * BASE_SIZE;
-    }
-
-    function initGame() {
-        adjustBoard();
-        initOffscreen();
-        pathPoints = [];
-        for (let r = 0; r < BASE_SIZE; r++) {
-            for (let c = 0; c < BASE_SIZE; c++) {
-                paintPixel(Math.floor(BASE1_X-BASE_SIZE/2+c), Math.floor(BASE1_Y-BASE_SIZE/2+r), P1);
-                paintPixel(Math.floor(BASE2_X-BASE_SIZE/2+c), Math.floor(BASE2_Y-BASE_SIZE/2+r), P2);
-            }
-        }
-        offCtx.putImageData(imgData, 0, 0);
-        currentPlayer = P1;
-        gameOver = false;
-        resetBall();
-        updateHUD(); updateGaugeUI(); updateButtons();
-        overlay.classList.remove('active');
-        if(animId) cancelAnimationFrame(animId);
-        if(gaugeAnimId) cancelAnimationFrame(gaugeAnimId);
-        initDial();
-        draw();
-    }
-
-    function resetBall() {
-        ball.moving = false; ball.vx = 0; ball.vy = 0;
-        ball.x = currentPlayer===P1 ? BASE1_X : BASE2_X;
-        ball.y = currentPlayer===P1 ? BASE1_Y : BASE2_Y;
-        shotsLeft = MAX_SHOTS; shotsFired = 0; hasLeftBase = false;
-        turnInProgress = true; placingMode = true; failed = false;
-        wallData.fill(0);
-        pathPoints = []; trailPoints = [];
-        dialAngle = 0; aimAngle = 0; updateDialArrow();
-        gaugeValueCurrent = 5;
-        updateHUD(); updateGaugeUI(); updateButtons();
-    }
-
-    function updateButtons() {
-        btnConfirm.disabled = !placingMode;
-        btnCancel.disabled = placingMode;
-        btnFire.disabled = placingMode;
-    }
-    function updateHUD() {
-        let p1=0, p2=0;
-        for(let i=0;i<territoryData.length;i++){
-            if(territoryData[i]===P1)p1++;
-            else if(territoryData[i]===P2)p2++;
-        }
-        p1ScoreEl.textContent = Math.round(p1/TOTAL_AREA*100)+'%';
-        p2ScoreEl.textContent = Math.round(p2/TOTAL_AREA*100)+'%';
-        const name = currentPlayer===P1?'🟢 P1':'🔴 P2';
-        turnInfoEl.textContent = name + (placingMode?' 공 배치':failed?' 실패!':` ${shotsLeft}발 | ${Math.round(dialAngle)}°`);
-    }
-    function updateGaugeUI() {
-        gaugeBar.style.width = (gaugeValueCurrent/POWER_MAX*100)+'%';
-        gaugeValueEl.textContent = gaugeValueCurrent.toFixed(1);
-    }
-    function startGauge() {
-        if(gaugeAnimId) cancelAnimationFrame(gaugeAnimId);
-        function anim() {
-            if(placingMode||gameOver||ball.moving){gaugeAnimId=null;return;}
-            gaugeValueCurrent += gaugeDirection*0.15;
-            if(gaugeValueCurrent>=POWER_MAX){gaugeValueCurrent=POWER_MAX;gaugeDirection=-1;}
-            else if(gaugeValueCurrent<=0){gaugeValueCurrent=0;gaugeDirection=1;}
-            updateGaugeUI();
-            gaugeAnimId = requestAnimationFrame(anim);
-        }
-        gaugeAnimId = requestAnimationFrame(anim);
-    }
-    function stopGauge(){ if(gaugeAnimId){cancelAnimationFrame(gaugeAnimId);gaugeAnimId=null;} }
-
-    function resizeCanvas() {
-        const r = document.getElementById('board-wrapper').getBoundingClientRect();
-        dpr = window.devicePixelRatio || 1;
-        canvasW = Math.floor(r.width-4); canvasH = Math.floor(r.height-4);
-        if(canvasW<=0||canvasH<=0){requestAnimationFrame(resizeCanvas);return;}
-        canvas.style.width = canvasW+'px'; canvas.style.height = canvasH+'px';
-        canvas.width = canvasW*dpr; canvas.height = canvasH*dpr;
-        ctx.setTransform(dpr,0,0,dpr,0,0);
-        scaleX = BOARD_W/canvasW; scaleY = BOARD_H/canvasH;
-        draw();
-    }
-
-    function draw() {
-        if(!offCanvas||!territoryData) return;
-        ctx.clearRect(0,0,canvasW,canvasH);
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0,0,canvasW,canvasH);
-
-        const cw = canvasW/BOARD_W, ch = canvasH/BOARD_H;
-
-        // ★ 이동 라인 그리기 (가장 먼저)
-        if(trailPoints.length > 1) {
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 4;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 8;
-            ctx.beginPath();
-            ctx.moveTo(trailPoints[0].x*cw, trailPoints[0].y*ch);
-            for(let i=1;i<trailPoints.length;i++){
-                ctx.lineTo(trailPoints[i].x*cw, trailPoints[i].y*ch);
-            }
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-        }
-
-        // 영역
-        ctx.drawImage(offCanvas, 0, 0, BOARD_W, BOARD_H, 0, 0, canvasW, canvasH);
-
-        const sf = Math.min(cw, ch);
-        const b1x=BASE1_X*cw, b1y=BASE1_Y*ch, b1s=BASE_SIZE*sf;
-        const b2x=BASE2_X*cw, b2y=BASE2_Y*ch, b2s=BASE_SIZE*sf;
-        ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
-        ctx.strokeRect(b1x-b1s/2,b1y-b1s/2,b1s,b1s);
-        ctx.strokeRect(b2x-b2s/2,b2y-b2s/2,b2s,b2s);
-        ctx.fillStyle='#fff';ctx.font='bold 22px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('P1',b1x,b1y);ctx.fillText('P2',b2x,b2y);
-
-        const bsx=ball.x*cw, bsy=ball.y*ch;
-        if(!placingMode && !ball.moving) {
-            const al=25*sf;
-            const ax=bsx+Math.cos(aimAngle)*al, ay=bsy+Math.sin(aimAngle)*al;
-            ctx.strokeStyle='#ffd700';ctx.lineWidth=3.5;
-            ctx.beginPath();ctx.moveTo(bsx,bsy);ctx.lineTo(ax,ay);ctx.stroke();
-            ctx.fillStyle='#ffd700';
-            ctx.beginPath();ctx.moveTo(ax,ay);
-            ctx.lineTo(ax-8*sf*Math.cos(aimAngle-0.5),ay-8*sf*Math.sin(aimAngle-0.5));
-            ctx.lineTo(ax-8*sf*Math.cos(aimAngle+0.5),ay-8*sf*Math.sin(aimAngle+0.5));
-            ctx.closePath();ctx.fill();
-        }
-
-        ctx.shadowColor='rgba(255,255,255,0.9)';ctx.shadowBlur=12;
-        ctx.beginPath();ctx.arc(bsx,bsy,BALL_RADIUS*sf,0,Math.PI*2);
-        ctx.fillStyle='#fff';ctx.fill();ctx.shadowBlur=0;
-        ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();
-
-        if(placingMode){
-            ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=2;
-            ctx.setLineDash([6,6]);
-            ctx.beginPath();ctx.arc(bsx,bsy,BALL_RADIUS*6*sf,0,Math.PI*2);ctx.stroke();
-            ctx.setLineDash([]);
-        }
-    }
-
-    function isMyTerritory(x,y){
-        const px=Math.floor(x), py=Math.floor(y);
-        if(px<0||px>=BOARD_W||py<0||py>=BOARD_H) return false;
-        return territoryData[py*BOARD_W+px] === currentPlayer;
-    }
-
-    function confirmPosition(){
-        if(!placingMode||ball.moving||gameOver) return;
-        placingMode=false;
-        startGauge();
-        updateHUD();updateButtons();draw();
-    }
-    function cancelPosition(){
-        if(placingMode||ball.moving||gameOver) return;
-        placingMode=true;
-        stopGauge();
-        updateHUD();updateButtons();draw();
-    }
-    function launchBall(){
-        if(ball.moving||gameOver||shotsLeft<=0||placingMode) return;
-        const power = gaugeValueCurrent/POWER_MAX;
-        ball.vx = Math.cos(aimAngle)*power*MAX_SPEED;
-        ball.vy = Math.sin(aimAngle)*power*MAX_SPEED;
-        ball.moving = true;
-        shotsLeft--; shotsFired++;
-        trailPoints.push({x:ball.x, y:ball.y});
-        stopGauge();
-        updateHUD();updateButtons();
-        moveBall();
-    }
-
-    function moveBall(){
-        if(!ball.moving) return;
-        ball.vx*=FRICTION; ball.vy*=FRICTION;
-        const sp=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
-        if(sp<MIN_SPEED){
-            ball.moving=false;ball.vx=0;ball.vy=0;
-            trailPoints.push({x:ball.x,y:ball.y});
-            pathPoints.push({x:ball.x,y:ball.y});
-            checkEndOfShot();return;
-        }
-        const px=ball.x, py=ball.y;
-        ball.x+=ball.vx; ball.y+=ball.vy;
-        if(ball.x<BALL_RADIUS+WALL_THICKNESS){ball.x=BALL_RADIUS+WALL_THICKNESS;ball.vx=Math.abs(ball.vx)*0.9;}
-        else if(ball.x>BOARD_W-BALL_RADIUS-WALL_THICKNESS){ball.x=BOARD_W-BALL_RADIUS-WALL_THICKNESS;ball.vx=-Math.abs(ball.vx)*0.9;}
-        if(ball.y<BALL_RADIUS+WALL_THICKNESS){ball.y=BALL_RADIUS+WALL_THICKNESS;ball.vy=Math.abs(ball.vy)*0.9;}
-        else if(ball.y>BOARD_H-BALL_RADIUS-WALL_THICKNESS){ball.y=BOARD_H-BALL_RADIUS-WALL_THICKNESS;ball.vy=-Math.abs(ball.vy)*0.9;}
-        // ★ 이동 중 실시간으로 라인 추가
-        if(trailPoints.length > 0) {
-            const last = trailPoints[trailPoints.length-1];
-            if(Math.sqrt((ball.x-last.x)**2 + (ball.y-last.y)**2) > 3) {
-                trailPoints.push({x:ball.x, y:ball.y});
-            }
-        }
-        if(shotsFired>1&&checkFailure(px,py,ball.x,ball.y)){
-            ball.moving=false;ball.vx=0;ball.vy=0;
-            if(animId)cancelAnimationFrame(animId);
-            handleFailure();return;
-        }
-        paintTrail(px,py,ball.x,ball.y);
-        animId=requestAnimationFrame(moveBall);
-        draw();
-    }
-
-    function checkFailure(x1,y1,x2,y2){
-        const safe=BALL_RADIUS*3*BALL_RADIUS*3;
-        const steps=Math.ceil(Math.sqrt((x2-x1)**2+(y2-y1)**2)/2);
-        for(let i=1;i<steps;i++){
-            const t=i/steps;
-            const px=Math.floor(x1+(x2-x1)*t);
-            const py=Math.floor(y1+(y2-y1)*t);
-            if(isMyTerritory(px,py))continue;
-            const dx=px-x1,dy=py-y1;
-            if(dx*dx+dy*dy<safe)continue;
-            if(territoryData[py*BOARD_W+px]===currentPlayer||wallData[py*BOARD_W+px]===1)return true;
-        }
-        return false;
-    }
-
-    function paintTrail(x1,y1,x2,y2){
-        const steps=Math.ceil(Math.sqrt((x2-x1)**2+(y2-y1)**2)/2);
-        for(let i=0;i<=steps;i++){
-            const t=i/steps;
-            const px=Math.floor(x1+(x2-x1)*t);
-            const py=Math.floor(y1+(y2-y1)*t);
-            if(isMyTerritory(px,py))continue;
-            for(let dy=-TRAIL_THICKNESS;dy<=TRAIL_THICKNESS;dy++){
-                for(let dx=-TRAIL_THICKNESS;dx<=TRAIL_THICKNESS;dx++){
-                    const nx=px+dx,ny=py+dy;
-                    if(nx<WALL_THICKNESS||nx>=BOARD_W-WALL_THICKNESS||ny<WALL_THICKNESS||ny>=BOARD_H-WALL_THICKNESS)continue;
-                    if(dx*dx+dy*dy<=TRAIL_THICKNESS*TRAIL_THICKNESS)wallData[ny*BOARD_W+nx]=1;
+            // Draw current active path line
+            if (turnPath.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(turnPath[0].x, turnPath[0].y);
+                for (let i = 1; i < turnPath.length; i++) {
+                    ctx.lineTo(turnPath[i].x, turnPath[i].y);
                 }
+                ctx.strokeStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
+                ctx.lineWidth = 5;
+                ctx.setLineDash([8, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
             }
-        }
-    }
 
-    function handleFailure(){
-        failed=true;turnInProgress=false;
-        if(animId)cancelAnimationFrame(animId);
-        wallData.fill(0);
-        pathPoints=[];trailPoints=[];
-        stopGauge();updateHUD();updateButtons();draw();
-        setTimeout(()=>{if(!gameOver)endTurn(false);},300);
-    }
+            // Draw Drag Arrow Indicator
+            if (isDragging) {
+                const dx = dragStart.x - dragCurrent.x;
+                const dy = dragStart.y - dragCurrent.y;
 
-    function checkEndOfShot(){
-        if(isMyTerritory(ball.x,ball.y)){
-            if(hasLeftBase){
-                const count=floodFillAndPaint(Math.floor(BASE1_X),currentPlayer===P1?BASE1_Y:BASE2_Y,currentPlayer);
-                updateHUD();
-                draw();
-                showSuccessToast();
-                setTimeout(()=>endTurn(true),400);
-            }else{
-                wallData.fill(0);
-                pathPoints=[];trailPoints=[];
-                draw();updateHUD();
+                ctx.beginPath();
+                ctx.moveTo(dragStart.x, dragStart.y);
+                ctx.lineTo(dragStart.x + dx, dragStart.y + dy);
+                ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // Arrow Head
+                const angle = Math.atan2(dy, dx);
+                const headLen = 14;
+                ctx.beginPath();
+                ctx.moveTo(dragStart.x + dx, dragStart.y + dy);
+                ctx.lineTo(dragStart.x + dx - headLen * Math.cos(angle - Math.PI / 6), dragStart.y + dy - headLen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(dragStart.x + dx - headLen * Math.cos(angle + Math.PI / 6), dragStart.y + dy - headLen * Math.sin(angle + Math.PI / 6));
+                ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
+                ctx.fill();
             }
-        }else if(shotsLeft<=0){
-            endTurn(false);
-        }else{
-            if(!hasLeftBase)hasLeftBase=true;
-            turnInProgress=true;
-            startGauge();
-            updateHUD();updateButtons();draw();
+
+            // Draw Cap (Bottle Cap)
+            if (cap.x >= 0 && cap.y >= 0) {
+                ctx.save();
+                ctx.translate(cap.x, cap.y);
+
+                // Shadow
+                ctx.beginPath();
+                ctx.arc(3, 4, CAP_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.fill();
+
+                // Cap Body
+                ctx.beginPath();
+                ctx.arc(0, 0, CAP_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
+                ctx.fill();
+
+                // Inner Ridge Design
+                ctx.beginPath();
+                ctx.arc(0, 0, CAP_RADIUS * 0.7, 0, Math.PI * 2);
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            // Draw Start Hint Indicator & Glowing Guide for Turn 0
+            if (currentShot === 0 && !isDragging && !isMoving && !gameOver) {
+                const preset = MAP_PRESETS[currentPresetKey];
+                const baseX = currentPlayer === 1 ? preset.baseRadius * 0.4 : MAP_WIDTH - (preset.baseRadius * 0.4);
+                const baseY = currentPlayer === 1 ? MAP_HEIGHT - (preset.baseRadius * 0.4) : preset.baseRadius * 0.4;
+
+                // Pulsing Start Ring
+                const pulse = (Math.sin(Date.now() * 0.005) + 1) * 8;
+                ctx.beginPath();
+                ctx.arc(baseX, baseY, 30 + pulse, 0, Math.PI * 2);
+                ctx.strokeStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("기지를 눌러 드래그하세요!", baseX, baseY + (currentPlayer === 1 ? -45 : 55));
+            }
+
+            ctx.restore();
         }
-    }
 
-    function showSuccessToast(){
-        successToast.style.opacity='1';
-        setTimeout(()=>successToast.style.opacity='0',800);
-    }
-
-    function endTurn(success){
-        turnInProgress=false;
-        ball.moving=false;ball.vx=0;ball.vy=0;
-        if(animId)cancelAnimationFrame(animId);
-        if(!success)wallData.fill(0);
-        pathPoints=[];trailPoints=[];
-        stopGauge();updateHUD();updateButtons();
-
-        let p1Lost=0,p2Lost=0;
-        for(let r=0;r<BASE_SIZE;r++)for(let c=0;c<BASE_SIZE;c++){
-            const x1=Math.floor(BASE1_X-BASE_SIZE/2+c),y1=Math.floor(BASE1_Y-BASE_SIZE/2+r);
-            const x2=Math.floor(BASE2_X-BASE_SIZE/2+c),y2=Math.floor(BASE2_Y-BASE_SIZE/2+r);
-            if(territoryData[y1*BOARD_W+x1]!==P1)p1Lost++;
-            if(territoryData[y2*BOARD_W+x2]!==P2)p2Lost++;
+        // Loop Function
+        function gameLoop() {
+            updatePhysics();
+            render();
+            requestAnimationFrame(gameLoop);
         }
-        if(p1Lost/BASE_AREA>BASE_LOSS_RATIO){gameOver=true;showGameOver(false,'P1 기지 50% 이상 빼앗김!');return;}
-        if(p2Lost/BASE_AREA>BASE_LOSS_RATIO){gameOver=true;showGameOver(true,'P2 기지 50% 이상 빼앗음!');return;}
-        currentPlayer=currentPlayer===P1?P2:P1;
-        resetBall();
-        draw();
-    }
 
-    function showGameOver(won,reason){
-        overlayTitle.textContent=won?'🎉 P1 승리!':'🎉 P2 승리!';
-        overlayDesc.textContent=reason;
-        overlay.classList.add('active');
-        draw();
-    }
-
-    function getCoords(cx,cy){
-        const r=canvas.getBoundingClientRect();
-        return{x:(cx-r.left)*scaleX,y:(cy-r.top)*scaleY};
-    }
-
-    canvas.addEventListener('touchstart',e=>{
-        e.preventDefault();
-        if(gameOver||ball.moving||!turnInProgress)return;
-        const t=e.touches[0];
-        const{x,y}=getCoords(t.clientX,t.clientY);
-        if(placingMode&&isMyTerritory(x,y)){
-            ball.x=x;ball.y=y;
-            draw();updateHUD();
-        }
-    },{passive:false});
-    canvas.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
-    canvas.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
-    canvas.addEventListener('mousedown',e=>{
-        if(gameOver||ball.moving||!turnInProgress)return;
-        const{x,y}=getCoords(e.clientX,e.clientY);
-        if(placingMode&&isMyTerritory(x,y)){
-            ball.x=x;ball.y=y;
-            draw();updateHUD();
-        }
-    });
-
-    btnConfirm.addEventListener('click',confirmPosition);
-    btnCancel.addEventListener('click',cancelPosition);
-    btnFire.addEventListener('click',launchBall);
-    btnRestart.addEventListener('click',initGame);
-
-    window.addEventListener('resize',()=>{resizeCanvas();initDial();if(territoryData){initGame();}});
-    window.addEventListener('orientationchange',()=>setTimeout(()=>{resizeCanvas();initDial();if(territoryData){initGame();}},300));
-
-    resizeCanvas();
-    initGame();
-    console.log('🏆 땅따먹기 v14.0 - 이동 라인 + 영역 색칠');
-})();
-</script>
+        // Setup & Start Window Onload
+        window.onload = function() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            initGame();
+            gameLoop();
+        };
+    </script>
 </body>
 </html>
