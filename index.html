@@ -50,7 +50,7 @@
     </div>
 
     <!-- Canvas Container -->
-    <main class="w-full max-w-4xl flex-1 h-[72vh] md:h-[76vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
+    <main class="w-full max-w-4xl flex-1 h-[65vh] md:h-[70vh] flex justify-center items-center relative overflow-hidden rounded-2xl shadow-xl border-4 border-amber-900/40 bg-[#d7c097]">
         <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
         
         <!-- Toast Notification Message -->
@@ -70,9 +70,27 @@
         </div>
     </main>
 
+    <!-- Power Gauge & Shoot Controls -->
+    <div class="w-full max-w-4xl bg-amber-900/90 text-white rounded-xl p-3 mt-2 shadow-lg flex flex-col md:flex-row items-center justify-between gap-3 border border-amber-700">
+        <div class="w-full md:w-2/3 flex flex-col gap-1">
+            <div class="flex justify-between text-xs font-bold px-1">
+                <span class="text-amber-200">파워 게이지</span>
+                <span id="powerPercentText" class="text-amber-300">0%</span>
+            </div>
+            <div class="w-full bg-amber-950 h-5 rounded-full overflow-hidden p-0.5 border border-amber-600 relative">
+                <div id="powerBar" class="h-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 rounded-full w-0 transition-all duration-75"></div>
+            </div>
+        </div>
+        <div class="flex gap-2 w-full md:w-auto">
+            <button id="shootBtn" disabled class="flex-1 md:flex-none bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-400 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold px-8 py-2.5 rounded-lg text-sm md:text-base shadow-lg active:scale-95 transition flex items-center justify-center gap-1">
+                <span>🚀 발사!</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Quick Guide Modal / Help -->
     <footer class="w-full max-w-4xl text-center text-xs text-amber-900/70 mt-1">
-        💡 <span class="font-semibold">조작법:</span> 병뚜껑을 드래그하여 튕기세요! 3번째 턴에 무사히 돌아오면 땅을 차지합니다.
+        💡 <span class="font-semibold">조작법:</span> 1. 방향 설정 (마우스/터치 드래그) ➔ 2. 타이밍에 맞춰 [🚀 발사!] 버튼을 누르세요.
     </footer>
 
     <script>
@@ -92,6 +110,10 @@
         const victoryModal = document.getElementById('victoryModal');
         const victoryTitle = document.getElementById('victoryTitle');
         const victoryDesc = document.getElementById('victoryDesc');
+
+        const powerBar = document.getElementById('powerBar');
+        const powerPercentText = document.getElementById('powerPercentText');
+        const shootBtn = document.getElementById('shootBtn');
 
         // Audio Effects using Web Audio API
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -169,11 +191,17 @@
         let currentPlayer = 1; // 1: Red, 2: Blue
         let currentShot = 0;   // 0, 1, 2
         let isMoving = false;
-        let isDragging = false;
+        let isAiming = false;
+        let hasAngleSet = false;
         let gameOver = false;
 
-        let dragStart = { x: 0, y: 0 };
-        let dragCurrent = { x: 0, y: 0 };
+        let aimAngle = 0; // Angle in radians
+        let aimStartPos = { x: 0, y: 0 };
+
+        // Power Gauge Oscillation Logic
+        let powerValue = 0; // 0 to 100
+        let powerDirection = 1; // 1: increasing, -1: decreasing
+        let powerSpeed = 2.2;
 
         // Offscreen Canvases for Player Territories
         let p1Canvas, p1Ctx;
@@ -253,11 +281,18 @@
             currentShot = 0;
             turnPath = [];
             isMoving = false;
-            isDragging = false;
+            isAiming = false;
+            hasAngleSet = false;
             cap.vx = 0;
             cap.vy = 0;
             cap.x = -100;
             cap.y = -100;
+            powerValue = 0;
+            powerDirection = 1;
+
+            shootBtn.disabled = true;
+            powerBar.style.width = '0%';
+            powerPercentText.textContent = '0%';
         }
 
         function showToast(msg) {
@@ -409,7 +444,7 @@
             };
         }
 
-        // Input Handlers
+        // Aiming Interaction
         function handleStart(e) {
             if (isMoving || gameOver) return;
 
@@ -425,39 +460,56 @@
                 turnPath = [{ x: pos.x, y: pos.y }];
             } else {
                 const dist = Math.hypot(pos.x - cap.x, pos.y - cap.y);
-                if (dist > CAP_RADIUS * 3.0) return;
+                if (dist > CAP_RADIUS * 4.0) return;
             }
 
-            isDragging = true;
-            dragStart = { x: cap.x, y: cap.y };
-            dragCurrent = pos;
+            isAiming = true;
+            aimStartPos = { x: cap.x, y: cap.y };
+            updateAimAngle(pos);
+        }
+
+        function updateAimAngle(pos) {
+            // Angle pointing from drag pos towards start (inverse direction launch)
+            const dx = aimStartPos.x - pos.x;
+            const dy = aimStartPos.y - pos.y;
+
+            if (Math.hypot(dx, dy) > 3) {
+                aimAngle = Math.atan2(dy, dx);
+                hasAngleSet = true;
+                shootBtn.disabled = false;
+            }
         }
 
         function handleMove(e) {
-            if (!isDragging) return;
-            dragCurrent = getCanvasPos(e);
+            if (!isAiming) return;
+            const pos = getCanvasPos(e);
+            updateAimAngle(pos);
         }
 
         function handleEnd() {
-            if (!isDragging) return;
-            isDragging = false;
+            if (isAiming) {
+                isAiming = false;
+                if (hasAngleSet) {
+                    showToast("파워를 맞춘 뒤 [🚀 발사!]를 누르세요!");
+                }
+            }
+        }
 
-            const dx = dragStart.x - dragCurrent.x;
-            const dy = dragStart.y - dragCurrent.y;
-            const power = Math.hypot(dx, dy);
+        // Shoot Trigger via Button
+        function launchCap() {
+            if (!hasAngleSet || isMoving || gameOver) return;
 
-            if (power < 5) return;
+            const maxSpeed = 22;
+            const actualSpeed = (powerValue / 100) * maxSpeed;
 
-            const maxPower = 22;
-            const scale = Math.min(power * 0.18, maxPower) / power;
-
-            cap.vx = dx * scale;
-            cap.vy = dy * scale;
+            cap.vx = Math.cos(aimAngle) * actualSpeed;
+            cap.vy = Math.sin(aimAngle) * actualSpeed;
 
             isMoving = true;
             currentShot++;
             shotsLeftEl.textContent = `남은 횟수: ${3 - currentShot}/3`;
 
+            shootBtn.disabled = true;
             playFlickSound();
         }
 
@@ -470,6 +522,8 @@
         window.addEventListener('touchmove', handleMove);
         window.addEventListener('touchend', handleEnd);
 
+        shootBtn.addEventListener('click', launchCap);
+
         document.getElementById('resetBtn').addEventListener('click', () => {
             initGame();
             showToast("새 게임 시작!");
@@ -480,9 +534,25 @@
             showToast("새 게임 시작!");
         });
 
-        // Game Physics Update Loop
+        // Game Physics & Power Oscillation Loop
         function updatePhysics() {
-            if (!isMoving || gameOver) return;
+            if (gameOver) return;
+
+            // Power Gauge Animation when angle is ready and not moving
+            if (hasAngleSet && !isMoving) {
+                powerValue += powerSpeed * powerDirection;
+                if (powerValue >= 100) {
+                    powerValue = 100;
+                    powerDirection = -1;
+                } else if (powerValue <= 0) {
+                    powerValue = 0;
+                    powerDirection = 1;
+                }
+                powerBar.style.width = powerValue + '%';
+                powerPercentText.textContent = Math.round(powerValue) + '%';
+            }
+
+            if (!isMoving) return;
 
             cap.x += cap.vx;
             cap.y += cap.vy;
@@ -527,6 +597,7 @@
                 cap.vx = 0;
                 cap.vy = 0;
                 isMoving = false;
+                hasAngleSet = false;
 
                 const opponentPlayer = currentPlayer === 1 ? 2 : 1;
                 const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
@@ -542,7 +613,7 @@
                     if (inOwnTerritory) {
                         switchTurn(`실패! ${currentShot}번째 턴에 기지로 돌아왔습니다. (3번째 턴에 돌아와야 함)`);
                     } else {
-                        showToast(`다음 위치에서 튕기세요 (${currentShot}/3)`);
+                        showToast(`다음 방향을 맞추고 발사하세요 (${currentShot}/3)`);
                     }
                 } else if (currentShot === 3) {
                     if (inOwnTerritory) {
@@ -599,34 +670,35 @@
                 ctx.setLineDash([]);
             }
 
-            // Draw Drag Arrow Indicator (Original Vector Arrow)
-            if (isDragging) {
-                const dx = dragStart.x - dragCurrent.x;
-                const dy = dragStart.y - dragCurrent.y;
-                const targetX = dragStart.x + dx;
-                const targetY = dragStart.y + dy;
+            // Draw Direction Aim Line (Compact Arrow)
+            if (hasAngleSet && !isMoving) {
+                const startOffset = CAP_RADIUS + 2; // Start just outside bottle cap
+                const arrowLength = 28;             // Compact length
+                
+                const startX = cap.x + Math.cos(aimAngle) * startOffset;
+                const startY = cap.y + Math.sin(aimAngle) * startOffset;
+                const targetX = startX + Math.cos(aimAngle) * arrowLength;
+                const targetY = startY + Math.sin(aimAngle) * arrowLength;
 
-                // Main Arrow Line
+                // Main Aim Shaft
                 ctx.beginPath();
-                ctx.moveTo(dragStart.x, dragStart.y);
+                ctx.moveTo(startX, startY);
                 ctx.lineTo(targetX, targetY);
                 ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
-                ctx.lineWidth = 5;
-                ctx.lineCap = 'round';
+                ctx.lineWidth = 4;
                 ctx.stroke();
 
-                // Arrow Head (Correct vector calculations)
-                const angle = Math.atan2(dy, dx);
-                const headLen = 12;
+                // Arrow Head
+                const headLen = 10;
                 ctx.beginPath();
                 ctx.moveTo(targetX, targetY);
                 ctx.lineTo(
-                    targetX - headLen * Math.cos(angle - Math.PI / 6),
-                    targetY - headLen * Math.sin(angle - Math.PI / 6)
+                    targetX - headLen * Math.cos(aimAngle - Math.PI / 6),
+                    targetY - headLen * Math.sin(aimAngle - Math.PI / 6)
                 );
                 ctx.lineTo(
-                    targetX - headLen * Math.cos(angle + Math.PI / 6),
-                    targetY - headLen * Math.sin(angle + Math.PI / 6)
+                    targetX - headLen * Math.cos(aimAngle + Math.PI / 6),
+                    targetY - headLen * Math.sin(aimAngle + Math.PI / 6)
                 );
                 ctx.closePath();
                 ctx.fillStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
@@ -661,13 +733,13 @@
             }
 
             // Draw Start Guide Text
-            if (currentShot === 0 && !isDragging && !isMoving && !gameOver) {
+            if (currentShot === 0 && !hasAngleSet && !isMoving && !gameOver) {
                 ctx.fillStyle = currentPlayer === 1 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(59, 130, 246, 0.85)';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                const textX = currentPlayer === 1 ? 80 : width - 80;
+                const textX = currentPlayer === 1 ? 85 : width - 85;
                 const textY = currentPlayer === 1 ? height - 50 : 60;
-                ctx.fillText("기지를 눌러 드래그하세요!", textX, textY);
+                ctx.fillText("기지에서 드래그하여 조준하세요!", textX, textY);
             }
         }
 
