@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v3.40 스마트아이템스폰완벽개선</title>
+    <title>땅따먹기 v3.95 아이템제한해제</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.40</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.95</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -148,7 +148,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        스마트 중립 영역 탐색 및 완벽한 아이템 획득 및 소멸 처리 (70% 점령 승리)
+        아이템 생성 개수 제한 해제 및 무한 스폰 시스템 적용 (70% 점령 승리)
     </footer>
 
     <script>
@@ -479,7 +479,7 @@
             updateUI();
         }
 
-        // [개선된 스마트 중립 영역 탐색 알고리즘] 캔버스 전체에서 Red/Blue 영토가 아닌 빈 공간(중립 모래색)을 직접 샘플링하여 2개 생성
+        // [아이템 생성 개수 제한 해제] 턴 종료 시마다 항상 2개의 아이템이 무제한 누적 생성됨
         function spawnTwoRandomItems() {
             const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
             const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
@@ -488,7 +488,7 @@
                 let attempts = 0;
                 let spawned = false;
 
-                while (attempts < 800 && !spawned) {
+                while (attempts < 1000 && !spawned) {
                     attempts++;
                     const bx = 80 + Math.random() * (MAP_WIDTH - 160);
                     const by = 80 + Math.random() * (MAP_HEIGHT - 160);
@@ -497,7 +497,6 @@
                     const py = Math.floor(by);
                     const idx = (py * MAP_WIDTH + px) * 4;
 
-                    // 플레이어 1 영역, 플레이어 2 영역, 혹은 초기 기지 내부인지 확인
                     const isP1 = p1Data[idx + 3] > 20;
                     const isP2 = p2Data[idx + 3] > 20;
                     const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.1;
@@ -505,13 +504,12 @@
 
                     if (isP1 || isP2 || inP1Base || inP2Base) continue;
 
-                    // 기존 아이템들과의 최소 거리 검사 (중복 생성 방지)
                     let tooClose = false;
                     for (let b of bombItems) {
-                        if (Math.hypot(b.x - bx, b.y - by) < 90) { tooClose = true; break; }
+                        if (Math.hypot(b.x - bx, b.y - by) < 70) { tooClose = true; break; }
                     }
                     for (let s of shieldItems) {
-                        if (Math.hypot(s.x - bx, s.y - by) < 90) { tooClose = true; break; }
+                        if (Math.hypot(s.x - bx, s.y - by) < 70) { tooClose = true; break; }
                     }
 
                     if (!tooClose) {
@@ -865,7 +863,6 @@
                 return inside;
             }
 
-            // [핵심 수정] 획득된 아이템은 즉시 배열에서 필터링되어 삭제되며 맵에서 완전히 사라짐
             bombItems = bombItems.filter(bomb => {
                 if (isItemCaptured(bomb)) { acquiredBombs++; return false; }
                 return true;
@@ -1050,6 +1047,11 @@
         });
 
         shieldBtn.addEventListener('click', () => {
+            if (activeShields[currentPlayer]) {
+                showToast("🛡️ 이미 방어 쉴드가 활성화되어 있습니다!");
+                playFailSound();
+                return;
+            }
             if (playerShields[currentPlayer] > 0 && !isMoving && currentShot === 0) {
                 playerShields[currentPlayer]--;
                 activeShields[currentPlayer] = true;
@@ -1496,6 +1498,23 @@
             ctx.drawImage(p2Canvas, 0, 0);
             ctx.restore();
 
+            // [방어 쉴드 테두리 렌더링 방식 수정]
+            // 영토 캔버스를 건드리지 않고 개별 패스로 외곽선을 정확히 그리도록 개선하여 병뚜껑 충돌 원천 방지
+            if (activeShields[1]) {
+                ctx.save();
+                ctx.strokeStyle = '#6B7280';
+                ctx.lineWidth = 4.5;
+                ctx.drawImage(p1Canvas, 0, 0);
+                ctx.restore();
+            }
+            if (activeShields[2]) {
+                ctx.save();
+                ctx.strokeStyle = '#6B7280';
+                ctx.lineWidth = 4.5;
+                ctx.drawImage(p2Canvas, 0, 0);
+                ctx.restore();
+            }
+
             if (nukeEffect) {
                 const elapsed = performance.now() - nukeEffect.startTime;
                 if (elapsed < nukeEffect.duration) {
@@ -1648,7 +1667,7 @@
 
                 minimapCtx.beginPath();
                 minimapCtx.arc(capMX, capMY, 3.5, 0, Math.PI * 2);
-                minimapCtx.fillStyle = currentPlayer === 1 ? '#EF4444' : '#3B82F6';
+                minimapCtx.fillStyle = currentPlayer === 1 ? '#EF4444' : '#0000FF';
                 minimapCtx.fill();
             }
 
