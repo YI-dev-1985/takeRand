@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v2.90 아이템2개생성수정</title>
+    <title>땅따먹기 v3.30 영토연결완화완료</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v2.90</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.30</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -148,7 +148,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        레드와 블루 모두 1턴 완료 시 아이템 2개씩 생성 (70% 점령 승리)
+        라인 교차 및 복잡한 얽힘 영토 연결성 대폭 완화 (70% 점령 승리)
     </footer>
 
     <script>
@@ -479,7 +479,6 @@
             updateUI();
         }
 
-        // [수정] 턴 완료 시 정확히 2개의 아이템을 생성하는 함수
         function spawnTwoRandomItems() {
             for (let i = 0; i < 2; i++) {
                 const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.25;
@@ -517,7 +516,7 @@
                     }
                 }
             }
-            showToast("✨ 새로운 아이템 2개가 생성되었습니다!");
+            showToast("✨ 새로운 아이템이 생성되었습니다!");
         }
 
         function updateItemUI() {
@@ -664,6 +663,7 @@
             }
         }
 
+        // [대폭 완화된 고립 영토 검사 함수] 복잡한 크로스 및 미세 접점에서도 영토가 절대 끊어지지 않도록 너그러운 마진 적용
         function cleanupIsolatedTerritory(player) {
             const targetCtx = player === 1 ? p1Ctx : p2Ctx;
             const imgData = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT);
@@ -675,13 +675,13 @@
             const baseCenterY = player === 1 ? MAP_HEIGHT - Math.floor(baseRadiusCalculated * 0.3) : Math.floor(baseRadiusCalculated * 0.3);
 
             let foundSeed = false;
-            for (let ry = -10; ry <= 10; ry += 2) {
-                for (let rx = -10; rx <= 10; rx += 2) {
+            for (let ry = -40; ry <= 40; ry += 2) {
+                for (let rx = -40; rx <= 40; rx += 2) {
                     const sx = baseCenterX + rx;
                     const sy = baseCenterY + ry;
                     if (sx >= 0 && sx < MAP_WIDTH && sy >= 0 && sy < MAP_HEIGHT) {
                         const idx = sy * MAP_WIDTH + sx;
-                        if (data[idx * 4 + 3] > 128) {
+                        if (data[idx * 4 + 3] > 20) {
                             queue.push(sx, sy);
                             visited[idx] = 1;
                             foundSeed = true;
@@ -695,20 +695,21 @@
             if (!foundSeed) return;
 
             let qIdx = 0;
-            const stepX = [0, 0, 1, -1];
-            const stepY = [1, -1, 0, 0];
+            // 16방향(반경 3픽셀 이내 인접 픽셀 허용) 탐색을 통해 웬만한 교차 틈새나 대각선 단절은 모두 하나의 영토로 흡수 병합
+            const stepX = [0, 0, 1, -1, 1, 1, -1, -1, 2, -2, 0, 0, 3, -3, 0, 0];
+            const stepY = [1, -1, 0, 0, 1, -1, 1, -1, 0, 0, 2, -2, 0, 0, 3, -3];
 
             while (qIdx < queue.length) {
                 const cx = queue[qIdx++];
                 const cy = queue[qIdx++];
 
-                for (let i = 0; i < 4; i++) {
+                for (let i = 0; i < 16; i++) {
                     const nx = cx + stepX[i];
                     const ny = cy + stepY[i];
 
                     if (nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT) {
                         const nIdx = ny * MAP_WIDTH + nx;
-                        if (!visited[nIdx] && data[nIdx * 4 + 3] > 128) {
+                        if (!visited[nIdx] && data[nIdx * 4 + 3] > 20) {
                             visited[nIdx] = 1;
                             queue.push(nx, ny);
                         }
@@ -718,7 +719,7 @@
 
             let modified = false;
             for (let i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
-                if (data[i * 4 + 3] > 128 && !visited[i]) {
+                if (data[i * 4 + 3] > 20 && !visited[i]) {
                     data[i * 4] = 0;
                     data[i * 4 + 1] = 0;
                     data[i * 4 + 2] = 0;
@@ -740,7 +741,7 @@
             for (let y = 0; y < MAP_HEIGHT; y += sampleStep) {
                 for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
                     const idx = (y * MAP_WIDTH + x) * 4 + 3;
-                    if (data[idx] > 128) count++;
+                    if (data[idx] > 20) count++;
                 }
             }
             return count;
@@ -762,8 +763,8 @@
                 for (let x = 0; x < MAP_WIDTH; x += sampleStep) {
                     const idx = (y * MAP_WIDTH + x) * 4 + 3;
                     total++;
-                    if (p1Data[idx] > 128) p1Count++;
-                    if (p2Data[idx] > 128) p2Count++;
+                    if (p1Data[idx] > 20) p1Count++;
+                    if (p2Data[idx] > 20) p2Count++;
                 }
             }
 
@@ -806,7 +807,6 @@
             if (message) showToast(message);
             if (isSuccess) playSuccessSound(); else playFailSound();
 
-            // [변경] 블루 턴이 끝나는 순간(레드와 블루가 각각 1번씩 턴을 완료한 시점)에 아이템 2개 즉시 생성
             if (currentPlayer === 2) {
                 spawnTwoRandomItems();
             }
@@ -845,21 +845,27 @@
             let acquiredBombs = 0;
             let acquiredShields = 0;
 
-            bombItems = bombItems.filter(bomb => {
-                let hit = false;
+            function isItemCaptured(item) {
                 for (let pt of turnPath) {
-                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 25) { hit = true; break; }
+                    if (Math.hypot(pt.x - item.x, pt.y - item.y) <= 30) return true;
                 }
-                if (hit) { acquiredBombs++; return false; }
+                let inside = false;
+                for (let i = 0, j = turnPath.length - 1; i < turnPath.length; j = i++) {
+                    const xi = turnPath[i].x, yi = turnPath[i].y;
+                    const xj = turnPath[j].x, yj = turnPath[j].y;
+                    const intersect = ((yi > item.y) !== (yj > item.y)) && (item.x < (xj - xi) * (item.y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            }
+
+            bombItems = bombItems.filter(bomb => {
+                if (isItemCaptured(bomb)) { acquiredBombs++; return false; }
                 return true;
             });
 
             shieldItems = shieldItems.filter(shield => {
-                let hit = false;
-                for (let pt of turnPath) {
-                    if (Math.hypot(pt.x - shield.x, pt.y - shield.y) <= 25) { hit = true; break; }
-                }
-                if (hit) { acquiredShields++; return false; }
+                if (isItemCaptured(shield)) { acquiredShields++; return false; }
                 return true;
             });
 
@@ -995,7 +1001,7 @@
                 playerBombs[currentPlayer]--;
                 isBombMode = false;
                 playBombSound();
-                showToast("💀 해골 핵폭탄이 투하되어 상대 영역이 초토화되었습니다!");
+                showToast("💀 해골 핵폭탄이 투하되어 해당 영역이 초토화되었습니다!");
                 updateScores();
                 updateUI();
                 return;
@@ -1202,6 +1208,7 @@
             moveTimer = 0;
             currentShot++;
             shotsLeftEl.textContent = `횟수: ${3 - currentShot}/3`;
+
             playFlickSound();
         }
 
