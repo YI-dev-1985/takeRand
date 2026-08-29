@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v3.30 영토연결완화완료</title>
+    <title>땅따먹기 v3.40 스마트아이템스폰완벽개선</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.30</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.40</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -148,7 +148,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        라인 교차 및 복잡한 얽힘 영토 연결성 대폭 완화 (70% 점령 승리)
+        스마트 중립 영역 탐색 및 완벽한 아이템 획득 및 소멸 처리 (70% 점령 승리)
     </footer>
 
     <script>
@@ -479,31 +479,39 @@
             updateUI();
         }
 
+        // [개선된 스마트 중립 영역 탐색 알고리즘] 캔버스 전체에서 Red/Blue 영토가 아닌 빈 공간(중립 모래색)을 직접 샘플링하여 2개 생성
         function spawnTwoRandomItems() {
-            for (let i = 0; i < 2; i++) {
-                const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.25;
-                const margin = baseRadiusCalculated * 1.5;
-                let attempts = 0;
+            const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
+            const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
 
-                while (attempts < 150) {
+            for (let i = 0; i < 2; i++) {
+                let attempts = 0;
+                let spawned = false;
+
+                while (attempts < 800 && !spawned) {
                     attempts++;
-                    const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
-                    const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
+                    const bx = 80 + Math.random() * (MAP_WIDTH - 160);
+                    const by = 80 + Math.random() * (MAP_HEIGHT - 160);
 
                     const px = Math.floor(bx);
                     const py = Math.floor(by);
-                    if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) continue;
+                    const idx = (py * MAP_WIDTH + px) * 4;
 
-                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated;
-                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated;
-                    if (inP1Base || inP2Base) continue;
+                    // 플레이어 1 영역, 플레이어 2 영역, 혹은 초기 기지 내부인지 확인
+                    const isP1 = p1Data[idx + 3] > 20;
+                    const isP2 = p2Data[idx + 3] > 20;
+                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.1;
+                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.1;
 
+                    if (isP1 || isP2 || inP1Base || inP2Base) continue;
+
+                    // 기존 아이템들과의 최소 거리 검사 (중복 생성 방지)
                     let tooClose = false;
                     for (let b of bombItems) {
-                        if (Math.hypot(b.x - bx, b.y - by) < minDistance) { tooClose = true; break; }
+                        if (Math.hypot(b.x - bx, b.y - by) < 90) { tooClose = true; break; }
                     }
                     for (let s of shieldItems) {
-                        if (Math.hypot(s.x - bx, s.y - by) < minDistance) { tooClose = true; break; }
+                        if (Math.hypot(s.x - bx, s.y - by) < 90) { tooClose = true; break; }
                     }
 
                     if (!tooClose) {
@@ -512,7 +520,7 @@
                         } else {
                             shieldItems.push({ x: bx, y: by });
                         }
-                        break;
+                        spawned = true;
                     }
                 }
             }
@@ -650,7 +658,7 @@
 
             const ctxToCheck = player === 1 ? p1Ctx : p2Ctx;
             const pixel = ctxToCheck.getImageData(px, py, 1, 1).data;
-            return pixel[3] > 128;
+            return pixel[3] > 20;
         }
 
         function isEnemyInitialBase(x, y, enemyPlayer) {
@@ -663,7 +671,6 @@
             }
         }
 
-        // [대폭 완화된 고립 영토 검사 함수] 복잡한 크로스 및 미세 접점에서도 영토가 절대 끊어지지 않도록 너그러운 마진 적용
         function cleanupIsolatedTerritory(player) {
             const targetCtx = player === 1 ? p1Ctx : p2Ctx;
             const imgData = targetCtx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT);
@@ -695,7 +702,6 @@
             if (!foundSeed) return;
 
             let qIdx = 0;
-            // 16방향(반경 3픽셀 이내 인접 픽셀 허용) 탐색을 통해 웬만한 교차 틈새나 대각선 단절은 모두 하나의 영토로 흡수 병합
             const stepX = [0, 0, 1, -1, 1, 1, -1, -1, 2, -2, 0, 0, 3, -3, 0, 0];
             const stepY = [1, -1, 0, 0, 1, -1, 1, -1, 0, 0, 2, -2, 0, 0, 3, -3];
 
@@ -859,6 +865,7 @@
                 return inside;
             }
 
+            // [핵심 수정] 획득된 아이템은 즉시 배열에서 필터링되어 삭제되며 맵에서 완전히 사라짐
             bombItems = bombItems.filter(bomb => {
                 if (isItemCaptured(bomb)) { acquiredBombs++; return false; }
                 return true;
