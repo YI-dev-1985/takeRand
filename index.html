@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v2.60 교차생성밸런스</title>
+    <title>땅따먹기 v2.90 아이템2개생성수정</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v2.60</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v2.90</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -37,14 +37,19 @@
             </div>
         </div>
 
-        <!-- 2nd Row: Item View Toggle & Bomb Usage -->
+        <!-- 2nd Row: Item View Toggle & Item Usage Buttons -->
         <div class="flex justify-between items-center w-full pt-1 border-t border-amber-700/60">
             <button id="toggleBombViewBtn" class="bg-amber-900 hover:bg-amber-700 text-amber-200 text-[10px] px-2.5 py-1 rounded shadow border border-amber-600 font-bold transition w-[115px] text-center">
                 👁️ 아이템 숨김
             </button>
-            <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-3 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
-                <span>💣 폭탄 사용</span><span id="bombCount" class="bg-white text-red-700 px-1.5 rounded-full text-[10px]">0</span>
-            </button>
+            <div class="flex items-center gap-1.5">
+                <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
+                    <span>💣 폭탄</span><span id="bombCount" class="bg-white text-red-700 px-1 rounded-full text-[10px]">0</span>
+                </button>
+                <button id="shieldBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-blue-300 flex items-center gap-1">
+                    <span>🛡️ 방어</span><span id="shieldCount" class="bg-white text-blue-700 px-1 rounded-full text-[10px]">0</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -52,7 +57,7 @@
     <div class="w-full max-w-6xl bg-white/90 backdrop-blur rounded p-1.5 shadow-sm mb-1 flex justify-around items-center text-[11px] md:text-xs border border-amber-200">
         <div id="p1Status" class="flex items-center gap-1.5 font-bold text-red-600 px-2 py-0.5 rounded-full border border-red-400 bg-red-50">
             <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
-            <span>Red: <span id="p1Score">1.0</span>% (<span id="p1BaseRatio">100</span>%)</span>
+            <span>Red: <span id="p1Score">1.0</span>% (<span id="p1BaseRatio">100</span>%) <span id="p1ShieldStatus" class="text-blue-600 text-[10px] hidden">[쉴드ON]</span></span>
         </div>
         
         <div class="text-center px-1">
@@ -62,7 +67,7 @@
 
         <div id="p2Status" class="flex items-center gap-1.5 font-bold text-blue-600 px-2 py-0.5 rounded-full border border-transparent opacity-60">
             <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-            <span>Blue: <span id="p2Score">1.0</span>% (<span id="p2BaseRatio">100</span>%)</span>
+            <span>Blue: <span id="p2Score">1.0</span>% (<span id="p2BaseRatio">100</span>%) <span id="p2ShieldStatus" class="text-blue-600 text-[10px] hidden">[쉴드ON]</span></span>
         </div>
     </div>
 
@@ -143,7 +148,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        양측 합산 총 3번의 턴 시도(예: 레드→블루→레드) 완료 시 공용 영역에 아이템 1개 생성 (70% 점령 승리)
+        레드와 블루 모두 1턴 완료 시 아이템 2개씩 생성 (70% 점령 승리)
     </footer>
 
     <script>
@@ -170,6 +175,9 @@
         const toastEl = document.getElementById('toast');
         const p1StatusEl = document.getElementById('p1Status');
         const p2StatusEl = document.getElementById('p2Status');
+        const p1ShieldStatus = document.getElementById('p1ShieldStatus');
+        const p2ShieldStatus = document.getElementById('p2ShieldStatus');
+
         const victoryModal = document.getElementById('victoryModal');
         const victoryTitle = document.getElementById('victoryTitle');
         const victoryDesc = document.getElementById('victoryDesc');
@@ -183,6 +191,8 @@
 
         const bombBtn = document.getElementById('bombBtn');
         const bombCountEl = document.getElementById('bombCount');
+        const shieldBtn = document.getElementById('shieldBtn');
+        const shieldCountEl = document.getElementById('shieldCount');
         const toggleBombViewBtn = document.getElementById('toggleBombViewBtn');
 
         const panToggleBtn = document.getElementById('panToggleBtn');
@@ -287,10 +297,13 @@
         let isPositionConfirmed = false;
 
         let bombItems = [];
+        let shieldItems = [];
         let playerBombs = { 1: 0, 2: 0 };
+        let playerShields = { 1: 0, 2: 0 };
+        let activeShields = { 1: false, 2: false };
+        
         let isBombMode = false;
-        let showBombLocations = false;
-        let totalTurnCounter = 0; // [교차 생성] 누적 턴 카운터 (3턴마다 생성)
+        let showItemLocations = false;
 
         let nukeEffect = null;
 
@@ -411,9 +424,10 @@
             victoryModal.classList.add('hidden');
             isBombMode = false;
             playerBombs = { 1: 0, 2: 0 };
+            playerShields = { 1: 0, 2: 0 };
+            activeShields = { 1: false, 2: false };
             nukeEffect = null;
-            totalTurnCounter = 0;
-            updateBombUI();
+            updateItemUI();
 
             minimapContainer.style.top = '10px';
             minimapContainer.style.right = '10px';
@@ -451,6 +465,7 @@
             p2InitialArea = calculateAreaPixels(p2Ctx);
 
             bombItems = [];
+            shieldItems = [];
 
             currentPlayer = 1;
             resetTurnState();
@@ -464,51 +479,67 @@
             updateUI();
         }
 
-        // [교차 생성 로직] 양측이 번갈아가며 총 3번 시도한 뒤 공용 영역에 공평하게 폭탄 생성
-        function spawnFairRandomBomb() {
-            const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.3;
-            const margin = baseRadiusCalculated * 1.5;
-            let attempts = 0;
+        // [수정] 턴 완료 시 정확히 2개의 아이템을 생성하는 함수
+        function spawnTwoRandomItems() {
+            for (let i = 0; i < 2; i++) {
+                const minDistance = Math.min(MAP_WIDTH, MAP_HEIGHT) * 0.25;
+                const margin = baseRadiusCalculated * 1.5;
+                let attempts = 0;
 
-            while (attempts < 300) {
-                attempts++;
-                const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
-                const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
+                while (attempts < 150) {
+                    attempts++;
+                    const bx = margin + Math.random() * (MAP_WIDTH - margin * 2);
+                    const by = margin + Math.random() * (MAP_HEIGHT - margin * 2);
 
-                const px = Math.floor(bx);
-                const py = Math.floor(by);
-                if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) continue;
+                    const px = Math.floor(bx);
+                    const py = Math.floor(by);
+                    if (px < 0 || px >= MAP_WIDTH || py < 0 || py >= MAP_HEIGHT) continue;
 
-                const p1Pixel = p1Ctx.getImageData(px, py, 1, 1).data[3];
-                const p2Pixel = p2Ctx.getImageData(px, py, 1, 1).data[3];
-                const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated;
-                const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated;
+                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated;
+                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated;
+                    if (inP1Base || inP2Base) continue;
 
-                let tooClose = false;
-                for (let b of bombItems) {
-                    if (Math.hypot(b.x - bx, b.y - by) < minDistance) {
-                        tooClose = true;
+                    let tooClose = false;
+                    for (let b of bombItems) {
+                        if (Math.hypot(b.x - bx, b.y - by) < minDistance) { tooClose = true; break; }
+                    }
+                    for (let s of shieldItems) {
+                        if (Math.hypot(s.x - bx, s.y - by) < minDistance) { tooClose = true; break; }
+                    }
+
+                    if (!tooClose) {
+                        if (Math.random() < 0.5) {
+                            bombItems.push({ x: bx, y: by });
+                        } else {
+                            shieldItems.push({ x: bx, y: by });
+                        }
                         break;
                     }
                 }
-
-                if (p1Pixel <= 128 && p2Pixel <= 128 && !inP1Base && !inP2Base && !tooClose) {
-                    bombItems.push({ x: bx, y: by });
-                    showToast("💣 새로운 폭탄 아이템이 맵에 생성되었습니다!");
-                    break;
-                }
             }
+            showToast("✨ 새로운 아이템 2개가 생성되었습니다!");
         }
 
-        function updateBombUI() {
-            const count = playerBombs[currentPlayer];
-            if (count > 0) {
+        function updateItemUI() {
+            const bCount = playerBombs[currentPlayer];
+            if (bCount > 0) {
                 bombBtn.classList.remove('hidden');
-                bombCountEl.textContent = count;
+                bombCountEl.textContent = bCount;
             } else {
                 bombBtn.classList.add('hidden');
                 isBombMode = false;
             }
+
+            const sCount = playerShields[currentPlayer];
+            if (sCount > 0) {
+                shieldBtn.classList.remove('hidden');
+                shieldCountEl.textContent = sCount;
+            } else {
+                shieldBtn.classList.add('hidden');
+            }
+
+            p1ShieldStatus.classList.toggle('hidden', !activeShields[1]);
+            p2ShieldStatus.classList.toggle('hidden', !activeShields[2]);
         }
 
         function recenterCameraOnCurrentPlayer() {
@@ -578,7 +609,7 @@
 
             turnPath = [{ x: cap.x, y: cap.y }];
             updateConfirmButtonUI();
-            updateBombUI();
+            updateItemUI();
 
             flickPullDistance = 0;
             flickHandle.style.transform = `translateY(0px)`;
@@ -775,11 +806,9 @@
             if (message) showToast(message);
             if (isSuccess) playSuccessSound(); else playFailSound();
 
-            // [교차 생성 로직] 양쪽이 번갈아가며 총 3번의 턴 시도를 완료할 때마다(레드→블루→레드 혹은 그 반대 주기) 폭탄 1개 추가 생성
-            totalTurnCounter++;
-            if (totalTurnCounter >= 3) {
-                totalTurnCounter = 0;
-                spawnFairRandomBomb();
+            // [변경] 블루 턴이 끝나는 순간(레드와 블루가 각각 1번씩 턴을 완료한 시점)에 아이템 2개 즉시 생성
+            if (currentPlayer === 2) {
+                spawnTwoRandomItems();
             }
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
@@ -804,7 +833,7 @@
                 p1StatusEl.classList.add('border-transparent', 'opacity-60');
                 p1StatusEl.classList.remove('border-red-400', 'bg-red-50', 'opacity-100');
             }
-            updateBombUI();
+            updateItemUI();
         }
 
         function captureTerritory() {
@@ -813,25 +842,35 @@
             const targetCtx = currentPlayer === 1 ? p1Ctx : p2Ctx;
             const enemyCtx = currentPlayer === 1 ? p2Ctx : p1Ctx;
 
-            let acquiredBombsCount = 0;
+            let acquiredBombs = 0;
+            let acquiredShields = 0;
+
             bombItems = bombItems.filter(bomb => {
                 let hit = false;
                 for (let pt of turnPath) {
-                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 22) {
-                        hit = true;
-                        break;
-                    }
+                    if (Math.hypot(pt.x - bomb.x, pt.y - bomb.y) <= 25) { hit = true; break; }
                 }
-                if (hit) {
-                    acquiredBombsCount++;
-                    return false;
-                }
+                if (hit) { acquiredBombs++; return false; }
                 return true;
             });
 
-            if (acquiredBombsCount > 0) {
-                playerBombs[currentPlayer] += acquiredBombsCount;
-                showToast(`🎁 숨겨진 폭탄 ${acquiredBombsCount}개 획득! (총 보유: ${playerBombs[currentPlayer]}개)`);
+            shieldItems = shieldItems.filter(shield => {
+                let hit = false;
+                for (let pt of turnPath) {
+                    if (Math.hypot(pt.x - shield.x, pt.y - shield.y) <= 25) { hit = true; break; }
+                }
+                if (hit) { acquiredShields++; return false; }
+                return true;
+            });
+
+            if (acquiredBombs > 0) {
+                playerBombs[currentPlayer] += acquiredBombs;
+                showToast(`💣 숨겨진 폭탄 ${acquiredBombs}개 획득!`);
+                playSuccessSound();
+            }
+            if (acquiredShields > 0) {
+                playerShields[currentPlayer] += acquiredShields;
+                showToast(`🛡️ 방어 쉴드 ${acquiredShields}개 획득!`);
                 playSuccessSound();
             }
 
@@ -845,6 +884,7 @@
             enemyCtx.fill();
             enemyCtx.globalCompositeOperation = 'source-over';
 
+            targetCtx.save();
             targetCtx.fillStyle = currentPlayer === 1 ? '#FF0000' : '#0000FF';
             targetCtx.beginPath();
             targetCtx.moveTo(turnPath[0].x, turnPath[0].y);
@@ -853,6 +893,7 @@
             }
             targetCtx.closePath();
             targetCtx.fill();
+            targetCtx.restore();
 
             updateScores();
         }
@@ -899,6 +940,18 @@
 
             if (isBombMode) {
                 const enemyPlayer = currentPlayer === 1 ? 2 : 1;
+                
+                if (activeShields[enemyPlayer]) {
+                    showToast("🛡️ 상대방의 방어 쉴드에 막혀 폭탄이 튕겨 나갔습니다!");
+                    playFailSound();
+                    activeShields[enemyPlayer] = false;
+                    playerBombs[currentPlayer]--;
+                    isBombMode = false;
+                    updateScores();
+                    updateUI();
+                    return;
+                }
+
                 if (isEnemyInitialBase(mapPos.x, mapPos.y, enemyPlayer)) {
                     showToast("상대방의 최초 기지는 폭탄으로 공격할 수 없습니다!");
                     playFailSound();
@@ -942,7 +995,7 @@
                 playerBombs[currentPlayer]--;
                 isBombMode = false;
                 playBombSound();
-                showToast("🍄 핵폭탄이 투하되어 상대 영역이 초토화되었습니다!");
+                showToast("💀 해골 핵폭탄이 투하되어 상대 영역이 초토화되었습니다!");
                 updateScores();
                 updateUI();
                 return;
@@ -983,10 +1036,20 @@
             }
         });
 
+        shieldBtn.addEventListener('click', () => {
+            if (playerShields[currentPlayer] > 0 && !isMoving && currentShot === 0) {
+                playerShields[currentPlayer]--;
+                activeShields[currentPlayer] = true;
+                showToast("🛡️ 방어 쉴드가 활성화되었습니다! 다음 턴에 상대 공격을 막아냅니다.");
+                playSuccessSound();
+                updateItemUI();
+            }
+        });
+
         toggleBombViewBtn.addEventListener('click', () => {
-            showBombLocations = !showBombLocations;
-            if (showBombLocations) {
-                toggleBombViewBtn.className = "bg-green-600 text-white text-[10px] px-2.5 py-1 rounded shadow border border-green-400 font-bold transition w-[115px] text-center";
+            showItemLocations = !showItemLocations;
+            if (showItemLocations) {
+                toggleBombViewBtn.className = "bg-green-600 hover:bg-green-500 text-white text-[10px] px-2.5 py-1 rounded shadow border border-green-400 font-bold transition w-[115px] text-center";
                 toggleBombViewBtn.textContent = "👁️ 아이템 보기 (ON)";
                 showToast("아이템 위치가 표시됩니다.");
             } else {
@@ -1283,6 +1346,15 @@
         function updatePhysics() {
             if (gameOver || !isMoving) return;
 
+            const opponentPlayer = currentPlayer === 1 ? 2 : 1;
+            if (activeShields[opponentPlayer] && isPointInTerritory(cap.x, cap.y, opponentPlayer)) {
+                cap.vx = -cap.vx * BOUNCE_RESTITUTION * 1.5;
+                cap.vy = -cap.vy * BOUNCE_RESTITUTION * 1.5;
+                playBounceSound();
+                showToast("🛡️ 상대방의 방어 쉴드에 부딪혀 튕겨 나갔습니다!");
+                activeShields[opponentPlayer] = false;
+            }
+
             cap.x += cap.vx;
             cap.y += cap.vy;
             moveTimer++;
@@ -1330,7 +1402,6 @@
                 flickPullDistance = 0;
                 flickHandle.style.transform = `translateY(0px)`;
 
-                const opponentPlayer = currentPlayer === 1 ? 2 : 1;
                 const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
 
                 if (inOpponentTerritory) {
@@ -1379,12 +1450,24 @@
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke();
             }
 
-            if (showBombLocations) {
+            if (showItemLocations) {
                 bombItems.forEach(bomb => {
                     ctx.save();
                     ctx.beginPath();
                     ctx.arc(bomb.x, bomb.y, 6, 0, Math.PI * 2);
                     ctx.fillStyle = '#FACC15';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#000000';
+                    ctx.stroke();
+                    ctx.restore();
+                });
+
+                shieldItems.forEach(shield => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(shield.x, shield.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3B82F6';
                     ctx.fill();
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = '#000000';
@@ -1408,9 +1491,9 @@
                     ctx.textBaseline = 'middle';
                     ctx.lineWidth = 4;
                     ctx.strokeStyle = '#000000';
-                    ctx.strokeText('🍄', nukeEffect.x, nukeEffect.y);
+                    ctx.strokeText('💀', nukeEffect.x, nukeEffect.y);
                     ctx.fillStyle = '#EF4444';
-                    ctx.fillText('🍄', nukeEffect.x, nukeEffect.y);
+                    ctx.fillText('💀', nukeEffect.x, nukeEffect.y);
                     ctx.restore();
                 } else {
                     nukeEffect = null;
