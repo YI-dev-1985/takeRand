@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v4.50 중립영역스폰정밀개선</title>
+    <title>땅따먹기 v4.60 가장자리영역스폰완벽개선</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v4.50</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v4.60</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -154,7 +154,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        정밀 중립 영역 스캔 스폰 시스템 적용 (70% 점령 승리)
+        맵 가장자리 포함 전체 중립 영역 정밀 스폰 알고리즘 적용 (70% 점령 승리)
     </footer>
 
     <script>
@@ -508,8 +508,7 @@
             updateUI();
         }
 
-        // [정밀 중립 영역 탐색 및 스폰 알고리즘]
-        // 맵 전역을 후보군 그리드로 스캔하여 Red/Blue 영토 및 기지가 아닌 순수 모래색 빈 공간을 확실히 탐색하여 아이템 2개 생성
+        // [완벽 개선된 중립 영역 스폰 알고리즘] 맵 가장자리(테두리 안쪽 30픽셀 여유)부터 정밀 스캔하여 빈 곳에 아이템 생성
         function spawnTwoRandomItems() {
             const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
             const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
@@ -518,10 +517,10 @@
                 let attempts = 0;
                 let spawned = false;
 
-                while (attempts < 1500 && !spawned) {
+                while (attempts < 2000 && !spawned) {
                     attempts++;
-                    const bx = 100 + Math.random() * (MAP_WIDTH - 200);
-                    const by = 100 + Math.random() * (MAP_HEIGHT - 200);
+                    const bx = 30 + Math.random() * (MAP_WIDTH - 60);
+                    const by = 30 + Math.random() * (MAP_HEIGHT - 60);
 
                     const px = Math.floor(bx);
                     const py = Math.floor(by);
@@ -529,15 +528,15 @@
 
                     const isP1 = p1Data[idx + 3] > 20;
                     const isP2 = p2Data[idx + 3] > 20;
-                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.2;
-                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.2;
+                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.1;
+                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.1;
 
                     if (isP1 || isP2 || inP1Base || inP2Base) continue;
 
                     let tooClose = false;
                     for (let list of [bombItems, shieldItems, weakItems, wallFailItems]) {
                         for (let item of list) {
-                            if (Math.hypot(item.x - bx, item.y - by) < 80) { tooClose = true; break; }
+                            if (Math.hypot(item.x - bx, item.y - by) < 60) { tooClose = true; break; }
                         }
                         if (tooClose) break;
                     }
@@ -1135,7 +1134,7 @@
             }
             if (playerWallFails[currentPlayer] > 0 && !isMoving && currentShot === 0) {
                 playerWallFails[currentPlayer]--;
-                activeWallFails[opponent] = true; // 상대방에게 벽아웃 디버프 부여
+                activeWallFails[opponent] = true;
                 showToast("⚡ 벽아웃 발동! 다음 턴 상대방은 벽에 부딪히면 실패합니다.");
                 playSuccessSound();
                 updateItemUI();
