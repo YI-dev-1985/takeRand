@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>땅따먹기 v3.95 아이템제한해제</title>
+    <title>땅따먹기 v4.50 중립영역스폰정밀개선</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -24,7 +24,7 @@
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center gap-2">
                 <h1 class="text-base md:text-lg font-bold">⛳ 땅따먹기</h1>
-                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v3.95</span>
+                <span class="bg-amber-700 text-amber-200 text-[9px] px-1.5 py-0.5 rounded font-mono">v4.50</span>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex bg-amber-950/60 p-0.5 rounded text-[11px] font-semibold items-center gap-1 border border-amber-600/40">
@@ -42,12 +42,18 @@
             <button id="toggleBombViewBtn" class="bg-amber-900 hover:bg-amber-700 text-amber-200 text-[10px] px-2.5 py-1 rounded shadow border border-amber-600 font-bold transition w-[115px] text-center">
                 👁️ 아이템 숨김
             </button>
-            <div class="flex items-center gap-1.5">
-                <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button id="bombBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-extrabold px-2 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1">
                     <span>💣 폭탄</span><span id="bombCount" class="bg-white text-red-700 px-1 rounded-full text-[10px]">0</span>
                 </button>
-                <button id="shieldBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-blue-300 flex items-center gap-1">
+                <button id="shieldBtn" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-2 py-1 rounded text-xs shadow animate-pulse border border-blue-300 flex items-center gap-1">
                     <span>🛡️ 방어</span><span id="shieldCount" class="bg-white text-blue-700 px-1 rounded-full text-[10px]">0</span>
+                </button>
+                <button id="weakBtn" class="hidden bg-purple-600 hover:bg-purple-500 text-white font-extrabold px-2 py-1 rounded text-xs shadow animate-pulse border border-purple-300 flex items-center gap-1">
+                    <span>🎲 랜덤파워</span><span id="weakCount" class="bg-white text-purple-700 px-1 rounded-full text-[10px]">0</span>
+                </button>
+                <button id="wallFailBtn" class="hidden bg-orange-600 hover:bg-orange-500 text-white font-extrabold px-2 py-1 rounded text-xs shadow animate-pulse border border-orange-300 flex items-center gap-1">
+                    <span>⚡ 벽아웃</span><span id="wallFailCount" class="bg-white text-orange-700 px-1 rounded-full text-[10px]">0</span>
                 </button>
             </div>
         </div>
@@ -57,7 +63,7 @@
     <div class="w-full max-w-6xl bg-white/90 backdrop-blur rounded p-1.5 shadow-sm mb-1 flex justify-around items-center text-[11px] md:text-xs border border-amber-200">
         <div id="p1Status" class="flex items-center gap-1.5 font-bold text-red-600 px-2 py-0.5 rounded-full border border-red-400 bg-red-50">
             <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
-            <span>Red: <span id="p1Score">1.0</span>% (<span id="p1BaseRatio">100</span>%) <span id="p1ShieldStatus" class="text-blue-600 text-[10px] hidden">[쉴드ON]</span></span>
+            <span>Red: <span id="p1Score">1.0</span>% (<span id="p1BaseRatio">100</span>%) <span id="p1ShieldStatus" class="text-blue-600 text-[10px] hidden">[방어ON]</span> <span id="p1WeakStatus" class="text-purple-600 text-[10px] hidden">[🎲랜덤파워피격중]</span> <span id="p1WallFailStatus" class="text-orange-600 text-[10px] hidden">[⚡벽아웃피격중]</span></span>
         </div>
         
         <div class="text-center px-1">
@@ -67,7 +73,7 @@
 
         <div id="p2Status" class="flex items-center gap-1.5 font-bold text-blue-600 px-2 py-0.5 rounded-full border border-transparent opacity-60">
             <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-            <span>Blue: <span id="p2Score">1.0</span>% (<span id="p2BaseRatio">100</span>%) <span id="p2ShieldStatus" class="text-blue-600 text-[10px] hidden">[쉴드ON]</span></span>
+            <span>Blue: <span id="p2Score">1.0</span>% (<span id="p2BaseRatio">100</span>%) <span id="p2ShieldStatus" class="text-blue-600 text-[10px] hidden">[방어ON]</span> <span id="p2WeakStatus" class="text-purple-600 text-[10px] hidden">[🎲랜덤파워피격중]</span> <span id="p2WallFailStatus" class="text-orange-600 text-[10px] hidden">[⚡벽아웃피격중]</span></span>
         </div>
     </div>
 
@@ -148,7 +154,7 @@
 
     <!-- Minimal Footer -->
     <footer class="w-full max-w-6xl text-center text-[10px] text-amber-900/60 mt-0.5">
-        아이템 생성 개수 제한 해제 및 무한 스폰 시스템 적용 (70% 점령 승리)
+        정밀 중립 영역 스캔 스폰 시스템 적용 (70% 점령 승리)
     </footer>
 
     <script>
@@ -177,6 +183,10 @@
         const p2StatusEl = document.getElementById('p2Status');
         const p1ShieldStatus = document.getElementById('p1ShieldStatus');
         const p2ShieldStatus = document.getElementById('p2ShieldStatus');
+        const p1WeakStatus = document.getElementById('p1WeakStatus');
+        const p2WeakStatus = document.getElementById('p2WeakStatus');
+        const p1WallFailStatus = document.getElementById('p1WallFailStatus');
+        const p2WallFailStatus = document.getElementById('p2WallFailStatus');
 
         const victoryModal = document.getElementById('victoryModal');
         const victoryTitle = document.getElementById('victoryTitle');
@@ -193,6 +203,10 @@
         const bombCountEl = document.getElementById('bombCount');
         const shieldBtn = document.getElementById('shieldBtn');
         const shieldCountEl = document.getElementById('shieldCount');
+        const weakBtn = document.getElementById('weakBtn');
+        const weakCountEl = document.getElementById('weakCount');
+        const wallFailBtn = document.getElementById('wallFailBtn');
+        const wallFailCountEl = document.getElementById('wallFailCount');
         const toggleBombViewBtn = document.getElementById('toggleBombViewBtn');
 
         const panToggleBtn = document.getElementById('panToggleBtn');
@@ -298,9 +312,17 @@
 
         let bombItems = [];
         let shieldItems = [];
+        let weakItems = [];
+        let wallFailItems = [];
+
         let playerBombs = { 1: 0, 2: 0 };
         let playerShields = { 1: 0, 2: 0 };
+        let playerWeaks = { 1: 0, 2: 0 };
+        let playerWallFails = { 1: 0, 2: 0 };
+
         let activeShields = { 1: false, 2: false };
+        let activeWeaks = { 1: false, 2: false };
+        let activeWallFails = { 1: false, 2: false };
         
         let isBombMode = false;
         let showItemLocations = false;
@@ -425,7 +447,12 @@
             isBombMode = false;
             playerBombs = { 1: 0, 2: 0 };
             playerShields = { 1: 0, 2: 0 };
+            playerWeaks = { 1: 0, 2: 0 };
+            playerWallFails = { 1: 0, 2: 0 };
+
             activeShields = { 1: false, 2: false };
+            activeWeaks = { 1: false, 2: false };
+            activeWallFails = { 1: false, 2: false };
             nukeEffect = null;
             updateItemUI();
 
@@ -466,6 +493,8 @@
 
             bombItems = [];
             shieldItems = [];
+            weakItems = [];
+            wallFailItems = [];
 
             currentPlayer = 1;
             resetTurnState();
@@ -479,7 +508,8 @@
             updateUI();
         }
 
-        // [아이템 생성 개수 제한 해제] 턴 종료 시마다 항상 2개의 아이템이 무제한 누적 생성됨
+        // [정밀 중립 영역 탐색 및 스폰 알고리즘]
+        // 맵 전역을 후보군 그리드로 스캔하여 Red/Blue 영토 및 기지가 아닌 순수 모래색 빈 공간을 확실히 탐색하여 아이템 2개 생성
         function spawnTwoRandomItems() {
             const p1Data = p1Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
             const p2Data = p2Ctx.getImageData(0, 0, MAP_WIDTH, MAP_HEIGHT).data;
@@ -488,10 +518,10 @@
                 let attempts = 0;
                 let spawned = false;
 
-                while (attempts < 1000 && !spawned) {
+                while (attempts < 1500 && !spawned) {
                     attempts++;
-                    const bx = 80 + Math.random() * (MAP_WIDTH - 160);
-                    const by = 80 + Math.random() * (MAP_HEIGHT - 160);
+                    const bx = 100 + Math.random() * (MAP_WIDTH - 200);
+                    const by = 100 + Math.random() * (MAP_HEIGHT - 200);
 
                     const px = Math.floor(bx);
                     const py = Math.floor(by);
@@ -499,24 +529,29 @@
 
                     const isP1 = p1Data[idx + 3] > 20;
                     const isP2 = p2Data[idx + 3] > 20;
-                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.1;
-                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.1;
+                    const inP1Base = Math.hypot(px, MAP_HEIGHT - py) <= baseRadiusCalculated * 1.2;
+                    const inP2Base = Math.hypot(MAP_WIDTH - px, py) <= baseRadiusCalculated * 1.2;
 
                     if (isP1 || isP2 || inP1Base || inP2Base) continue;
 
                     let tooClose = false;
-                    for (let b of bombItems) {
-                        if (Math.hypot(b.x - bx, b.y - by) < 70) { tooClose = true; break; }
-                    }
-                    for (let s of shieldItems) {
-                        if (Math.hypot(s.x - bx, s.y - by) < 70) { tooClose = true; break; }
+                    for (let list of [bombItems, shieldItems, weakItems, wallFailItems]) {
+                        for (let item of list) {
+                            if (Math.hypot(item.x - bx, item.y - by) < 80) { tooClose = true; break; }
+                        }
+                        if (tooClose) break;
                     }
 
                     if (!tooClose) {
-                        if (Math.random() < 0.5) {
+                        const rand = Math.random();
+                        if (rand < 0.25) {
                             bombItems.push({ x: bx, y: by });
-                        } else {
+                        } else if (rand < 0.5) {
                             shieldItems.push({ x: bx, y: by });
+                        } else if (rand < 0.75) {
+                            weakItems.push({ x: bx, y: by });
+                        } else {
+                            wallFailItems.push({ x: bx, y: by });
                         }
                         spawned = true;
                     }
@@ -543,8 +578,28 @@
                 shieldBtn.classList.add('hidden');
             }
 
+            const wCount = playerWeaks[currentPlayer];
+            if (wCount > 0) {
+                weakBtn.classList.remove('hidden');
+                weakCountEl.textContent = wCount;
+            } else {
+                weakBtn.classList.add('hidden');
+            }
+
+            const wfCount = playerWallFails[currentPlayer];
+            if (wfCount > 0) {
+                wallFailBtn.classList.remove('hidden');
+                wallFailCountEl.textContent = wfCount;
+            } else {
+                wallFailBtn.classList.add('hidden');
+            }
+
             p1ShieldStatus.classList.toggle('hidden', !activeShields[1]);
             p2ShieldStatus.classList.toggle('hidden', !activeShields[2]);
+            p1WeakStatus.classList.toggle('hidden', !activeWeaks[1]);
+            p2WeakStatus.classList.toggle('hidden', !activeWeaks[2]);
+            p1WallFailStatus.classList.toggle('hidden', !activeWallFails[1]);
+            p2WallFailStatus.classList.toggle('hidden', !activeWallFails[2]);
         }
 
         function recenterCameraOnCurrentPlayer() {
@@ -811,6 +866,9 @@
             if (message) showToast(message);
             if (isSuccess) playSuccessSound(); else playFailSound();
 
+            activeWeaks[currentPlayer] = false;
+            activeWallFails[currentPlayer] = false;
+
             if (currentPlayer === 2) {
                 spawnTwoRandomItems();
             }
@@ -848,6 +906,8 @@
 
             let acquiredBombs = 0;
             let acquiredShields = 0;
+            let acquiredWeaks = 0;
+            let acquiredWallFails = 0;
 
             function isItemCaptured(item) {
                 for (let pt of turnPath) {
@@ -863,26 +923,15 @@
                 return inside;
             }
 
-            bombItems = bombItems.filter(bomb => {
-                if (isItemCaptured(bomb)) { acquiredBombs++; return false; }
-                return true;
-            });
+            bombItems = bombItems.filter(b => { if (isItemCaptured(b)) { acquiredBombs++; return false; } return true; });
+            shieldItems = shieldItems.filter(s => { if (isItemCaptured(s)) { acquiredShields++; return false; } return true; });
+            weakItems = weakItems.filter(w => { if (isItemCaptured(w)) { acquiredWeaks++; return false; } return true; });
+            wallFailItems = wallFailItems.filter(wf => { if (isItemCaptured(wf)) { acquiredWallFails++; return false; } return true; });
 
-            shieldItems = shieldItems.filter(shield => {
-                if (isItemCaptured(shield)) { acquiredShields++; return false; }
-                return true;
-            });
-
-            if (acquiredBombs > 0) {
-                playerBombs[currentPlayer] += acquiredBombs;
-                showToast(`💣 숨겨진 폭탄 ${acquiredBombs}개 획득!`);
-                playSuccessSound();
-            }
-            if (acquiredShields > 0) {
-                playerShields[currentPlayer] += acquiredShields;
-                showToast(`🛡️ 방어 쉴드 ${acquiredShields}개 획득!`);
-                playSuccessSound();
-            }
+            if (acquiredBombs > 0) { playerBombs[currentPlayer] += acquiredBombs; showToast(`💣 폭탄 ${acquiredBombs}개 획득!`); playSuccessSound(); }
+            if (acquiredShields > 0) { playerShields[currentPlayer] += acquiredShields; showToast(`🛡️ 방어 쉴드 ${acquiredShields}개 획득!`); playSuccessSound(); }
+            if (acquiredWeaks > 0) { playerWeaks[currentPlayer] += acquiredWeaks; showToast(`🎲 랜덤파워 아이템 ${acquiredWeaks}개 획득!`); playSuccessSound(); }
+            if (acquiredWallFails > 0) { playerWallFails[currentPlayer] += acquiredWallFails; showToast(`⚡ 벽아웃 아이템 ${acquiredWallFails}개 획득!`); playSuccessSound(); }
 
             enemyCtx.globalCompositeOperation = 'destination-out';
             enemyCtx.beginPath();
@@ -1038,7 +1087,7 @@
                 isBombMode = !isBombMode;
                 if (isBombMode) {
                     showToast("💣 폭탄 모드 ON: 폭파할 상대방 영토를 터치하세요.");
-                    bombBtn.className = "bg-yellow-500 text-black font-extrabold px-2.5 py-1 rounded text-xs shadow animate-bounce border border-white flex items-center gap-1";
+                    bombBtn.className = "bg-yellow-500 text-black font-extrabold px-2 py-1 rounded text-xs shadow animate-bounce border border-white flex items-center gap-1";
                 } else {
                     showToast("폭탄 모드가 해제되었습니다.");
                     bombBtn.className = "bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded text-xs shadow animate-pulse border border-red-300 flex items-center gap-1";
@@ -1055,7 +1104,39 @@
             if (playerShields[currentPlayer] > 0 && !isMoving && currentShot === 0) {
                 playerShields[currentPlayer]--;
                 activeShields[currentPlayer] = true;
-                showToast("🛡️ 방어 쉴드가 활성화되었습니다! 다음 턴에 상대 공격을 막아냅니다.");
+                showToast("🛡️ 방어 쉴드가 활성화되었습니다!");
+                playSuccessSound();
+                updateItemUI();
+            }
+        });
+
+        weakBtn.addEventListener('click', () => {
+            const opponent = currentPlayer === 1 ? 2 : 1;
+            if (activeWeaks[opponent]) {
+                showToast("🎲 이미 상대방에게 랜덤파워가 적용되어 있습니다!");
+                playFailSound();
+                return;
+            }
+            if (playerWeaks[currentPlayer] > 0 && !isMoving && currentShot === 0) {
+                playerWeaks[currentPlayer]--;
+                activeWeaks[opponent] = true;
+                showToast("🎲 랜덤파워 발동! 다음 턴 상대방은 조절 불가 랜덤 파워로 발사됩니다!");
+                playSuccessSound();
+                updateItemUI();
+            }
+        });
+
+        wallFailBtn.addEventListener('click', () => {
+            const opponent = currentPlayer === 1 ? 2 : 1;
+            if (activeWallFails[opponent]) {
+                showToast("⚡ 이미 상대방에게 벽아웃이 적용되어 있습니다!");
+                playFailSound();
+                return;
+            }
+            if (playerWallFails[currentPlayer] > 0 && !isMoving && currentShot === 0) {
+                playerWallFails[currentPlayer]--;
+                activeWallFails[opponent] = true; // 상대방에게 벽아웃 디버프 부여
+                showToast("⚡ 벽아웃 발동! 다음 턴 상대방은 벽에 부딪히면 실패합니다.");
                 playSuccessSound();
                 updateItemUI();
             }
@@ -1121,8 +1202,16 @@
             if (pullDistance < 6) return;
 
             const maxPullDistance = 160;
-            const maxSpeed = isLargeMode ? 22 : 18;
-            const scaleSpeed = Math.min(pullDistance / maxPullDistance, 1.0) * maxSpeed;
+            let maxSpeed = isLargeMode ? 22 : 18;
+            let scaleSpeed;
+
+            if (activeWeaks[currentPlayer]) {
+                const randomRatio = Math.random() * 0.8 + 0.2;
+                scaleSpeed = randomRatio * maxSpeed;
+                showToast("🎲 랜덤 파워 발동!");
+            } else {
+                scaleSpeed = Math.min(pullDistance / maxPullDistance, 1.0) * maxSpeed;
+            }
 
             const angle = Math.atan2(dy, dx);
             cap.vx = Math.cos(angle) * scaleSpeed;
@@ -1207,8 +1296,16 @@
         function launchCapByPull(pullDist) {
             if (isMoving || gameOver) return;
             const pullRatio = pullDist / maxFlickPull;
-            const maxSpeed = isLargeMode ? 22 : 18;
-            const actualSpeed = Math.max(3, pullRatio * maxSpeed);
+            let maxSpeed = isLargeMode ? 22 : 18;
+            let actualSpeed;
+
+            if (activeWeaks[currentPlayer]) {
+                const randomRatio = Math.random() * 0.8 + 0.2;
+                actualSpeed = randomRatio * maxSpeed;
+                showToast("🎲 랜덤 파워 발동!");
+            } else {
+                actualSpeed = Math.max(2, pullRatio * maxSpeed);
+            }
 
             cap.vx = Math.cos(aimAngle) * actualSpeed;
             cap.vy = Math.sin(aimAngle) * actualSpeed;
@@ -1217,7 +1314,6 @@
             moveTimer = 0;
             currentShot++;
             shotsLeftEl.textContent = `횟수: ${3 - currentShot}/3`;
-
             playFlickSound();
         }
 
@@ -1385,15 +1481,27 @@
             }
 
             let bounced = false;
+            let hitWall = false;
 
             if (cap.x <= CAP_RADIUS || cap.x >= MAP_WIDTH - CAP_RADIUS) {
                 cap.vx = -cap.vx * BOUNCE_RESTITUTION;
                 bounced = true;
+                hitWall = true;
             }
 
             if (cap.y <= CAP_RADIUS || cap.y >= MAP_HEIGHT - CAP_RADIUS) {
                 cap.vy = -cap.vy * BOUNCE_RESTITUTION;
                 bounced = true;
+                hitWall = true;
+            }
+
+            if (hitWall && activeWallFails[currentPlayer]) {
+                cap.vx = 0;
+                cap.vy = 0;
+                isMoving = false;
+                activeWallFails[currentPlayer] = false;
+                switchTurn("⚡ 벽아웃! 맵 사이드에 부딪혀 턴이 실패했습니다!");
+                return;
             }
 
             if (bounced) {
@@ -1417,6 +1525,7 @@
                 isPullingFlick = false;
                 flickPullDistance = 0;
                 flickHandle.style.transform = `translateY(0px)`;
+                activeWallFails[currentPlayer] = false;
 
                 const inOpponentTerritory = isPointInTerritory(cap.x, cap.y, opponentPlayer);
 
@@ -1490,6 +1599,30 @@
                     ctx.stroke();
                     ctx.restore();
                 });
+
+                weakItems.forEach(weak => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(weak.x, weak.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#A855F7';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#000000';
+                    ctx.stroke();
+                    ctx.restore();
+                });
+
+                wallFailItems.forEach(wf => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(wf.x, wf.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#F97316';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#000000';
+                    ctx.stroke();
+                    ctx.restore();
+                });
             }
 
             ctx.save();
@@ -1498,8 +1631,6 @@
             ctx.drawImage(p2Canvas, 0, 0);
             ctx.restore();
 
-            // [방어 쉴드 테두리 렌더링 방식 수정]
-            // 영토 캔버스를 건드리지 않고 개별 패스로 외곽선을 정확히 그리도록 개선하여 병뚜껑 충돌 원천 방지
             if (activeShields[1]) {
                 ctx.save();
                 ctx.strokeStyle = '#6B7280';
@@ -1581,8 +1712,8 @@
                 ctx.fill();
             } else if (!isMoving && isPositionConfirmed) {
                 const startOffset = CAP_RADIUS + 3;
-                const baseArrowLen = 25;
-                const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 55;
+                const baseArrowLen = 20;
+                const dynamicArrowLen = baseArrowLen + (flickPullDistance / maxFlickPull) * 60;
 
                 const startX = cap.x + Math.cos(aimAngle) * startOffset;
                 const startY = cap.y + Math.sin(aimAngle) * startOffset;
@@ -1593,10 +1724,10 @@
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(targetX, targetY);
                 ctx.strokeStyle = currentPlayer === 1 ? '#DC2626' : '#2563EB';
-                ctx.lineWidth = 4 + (flickPullDistance / maxFlickPull) * 3;
+                ctx.lineWidth = 3 + (flickPullDistance / maxFlickPull) * 3;
                 ctx.stroke();
 
-                const headLen = 12 + (flickPullDistance / maxFlickPull) * 4;
+                const headLen = 10 + (flickPullDistance / maxFlickPull) * 5;
                 ctx.beginPath();
                 ctx.moveTo(targetX, targetY);
                 ctx.lineTo(
